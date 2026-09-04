@@ -331,7 +331,7 @@ async function handleApi(request: Request, env: Env) {
     const title = text(data.title, 80);
     const startTime = text(data.startTime, 40);
     const maxParticipants = Number(data.maxParticipants);
-    if (!title || !startTime || !Number.isFinite(maxParticipants) || maxParticipants < 1) return fail("请填写完整的活动信息。");
+    if (!title || !startTime || !Number.isFinite(maxParticipants) || maxParticipants < 0) return fail("请填写完整的活动信息。");
     const timestamp = now();
     await env.DB.prepare(`INSERT INTO events (id,title,description,type,start_time,signup_deadline,max_participants,requirements,voice_channel,status,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .bind(id(), title, text(data.description, 2000), text(data.type, 20) || "FUN", new Date(startTime).toISOString(), text(data.signupDeadline, 40) ? new Date(text(data.signupDeadline, 40)).toISOString() : null, Math.floor(maxParticipants), text(data.requirements, 500) || null, text(data.voiceChannel, 200) || null, "OPEN", admin.id, timestamp, timestamp).run();

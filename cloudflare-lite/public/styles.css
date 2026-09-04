@@ -6,7 +6,7 @@
   --text: #eef3fb;
   --muted: #9aa8bc;
   --line: #27344a;
-  --orange: #f59e0b;
+  --orange: #c8161e;
   --cyan: #22d3ee;
   --green: #34d399;
   --red: #fb7185;
@@ -19,7 +19,7 @@ button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 .site-header { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px max(20px, calc((100vw - 1120px) / 2)); background: rgba(8,12,20,.9); border-bottom: 1px solid var(--line); backdrop-filter: blur(16px); }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .04em; }
-.brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: #111827; background: linear-gradient(135deg, var(--orange), #fde68a); font-size: 13px; }
+.brand-logo { width: 42px; height: 42px; object-fit: contain; border-radius: 50%; background: white; }
 nav { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 nav button { padding: 8px 12px; color: var(--muted); border: 0; border-radius: 9px; background: transparent; }
 nav button:hover, nav button.active { color: white; background: var(--panel-2); }
