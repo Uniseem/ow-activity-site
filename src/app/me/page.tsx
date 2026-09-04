@@ -25,6 +25,10 @@ export default async function MePage({ searchParams }: MePageProps) {
   const profile = user.profile;
   const saved = params.saved === "profile";
   const registered = params.registered === "1";
+  const error = typeof params.error === "string" ? params.error : "";
+  const externalAvatarUrl = profile?.avatarUrl?.startsWith("http")
+    ? profile.avatarUrl
+    : "";
 
   return (
     <main className="page-shell grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -76,6 +80,15 @@ export default async function MePage({ searchParams }: MePageProps) {
           <Message tone="info">注册已提交，请完善资料后等待管理员审核。</Message>
         ) : null}
         {saved ? <Message tone="success">资料已保存，公开信息等待审核。</Message> : null}
+        {error === "avatar-size" ? (
+          <Message tone="warning">头像不能超过 512 KB。</Message>
+        ) : null}
+        {error === "avatar-type" ? (
+          <Message tone="warning">头像只支持 PNG、JPEG、WebP 或 GIF。</Message>
+        ) : null}
+        {error === "profile" ? (
+          <Message tone="warning">资料格式有误，请检查后重新提交。</Message>
+        ) : null}
         {profile?.reviewNote ? (
           <Message tone="warning">审核备注：{profile.reviewNote}</Message>
         ) : null}
@@ -100,7 +113,26 @@ export default async function MePage({ searchParams }: MePageProps) {
             <legend className="mb-1 text-base font-black">公开卡片</legend>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="公开昵称" name="displayName" required defaultValue={profile?.displayName ?? ""} maxLength={20} />
-              <Field label="头像链接" name="avatarUrl" defaultValue={profile?.avatarUrl ?? ""} placeholder="https://..." />
+              <Label label="上传头像">
+                <input
+                  className="focus-ring min-h-11 rounded-md border border-black/15 px-3 py-2 text-sm"
+                  name="avatarFile"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                />
+                <span className="text-xs font-medium text-[var(--muted)]">
+                  PNG、JPEG、WebP 或 GIF，最大 512 KB。新头像需管理员重新审核。
+                </span>
+              </Label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="或使用头像链接" name="avatarUrl" defaultValue={externalAvatarUrl} placeholder="https://..." />
+              {profile?.avatarUrl ? (
+                <label className="flex items-center gap-2 self-end rounded-md bg-[#f5f7fb] px-3 py-3 text-sm font-semibold">
+                  <input name="removeAvatar" type="checkbox" />
+                  删除当前头像
+                </label>
+              ) : null}
             </div>
             <Label label="公开宣言">
               <textarea

@@ -12,6 +12,7 @@ import {
   requireAdmin,
   requireUser,
 } from "@/lib/auth";
+import { avatarFileToDataUrl } from "@/lib/avatar-upload";
 import { assertDatabaseConfigured, prisma } from "@/lib/prisma";
 
 export type FormState = {
@@ -203,6 +204,7 @@ const profileSchema = z.object({
 
 export async function updateProfileAction(formData: FormData) {
   const user = await requireUser();
+  const avatarFile = formData.get("avatarFile");
 
   const parsed = profileSchema.safeParse({
     displayName: text(formData, "displayName"),
@@ -221,6 +223,21 @@ export async function updateProfileAction(formData: FormData) {
     redirect("/me?error=profile");
   }
 
+  let avatarUrl = parsed.data.avatarUrl || user.profile?.avatarUrl || null;
+
+  if (checkbox(formData, "removeAvatar")) {
+    avatarUrl = null;
+  }
+
+  if (avatarFile instanceof File && avatarFile.size > 0) {
+    try {
+      avatarUrl = await avatarFileToDataUrl(avatarFile);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "avatar-type";
+      redirect(`/me?error=${code}`);
+    }
+  }
+
   const reviewStatus = user.role === "ADMIN" ? "APPROVED" : "PENDING";
 
   await prisma.profile.upsert({
@@ -229,7 +246,7 @@ export async function updateProfileAction(formData: FormData) {
       userId: user.id,
       displayName: parsed.data.displayName,
       slogan: parsed.data.slogan,
-      avatarUrl: parsed.data.avatarUrl || null,
+      avatarUrl,
       battleTag: parsed.data.battleTag || null,
       mainRole: parsed.data.mainRole || null,
       mainHeroes: list(parsed.data.mainHeroes),
@@ -242,7 +259,7 @@ export async function updateProfileAction(formData: FormData) {
     update: {
       displayName: parsed.data.displayName,
       slogan: parsed.data.slogan,
-      avatarUrl: parsed.data.avatarUrl || null,
+      avatarUrl,
       battleTag: parsed.data.battleTag || null,
       mainRole: parsed.data.mainRole || null,
       mainHeroes: list(parsed.data.mainHeroes),

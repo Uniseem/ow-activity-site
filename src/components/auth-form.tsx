@@ -23,11 +23,14 @@ export function AuthForm({ mode }: AuthFormProps) {
       className="grid gap-4 rounded-md border border-black/10 bg-white p-5 shadow-sm"
     >
       <label className="grid gap-2 text-sm font-semibold">
-        用户名
+        用户名（登录用：英文、数字、下划线，3–24 位）
         <input
           className="focus-ring min-h-11 rounded-md border border-black/15 px-3 text-base font-normal"
           name="username"
           autoComplete="username"
+          minLength={isLogin ? undefined : 3}
+          maxLength={isLogin ? undefined : 24}
+          pattern={isLogin ? undefined : "[A-Za-z0-9_]{3,24}"}
           required
         />
         {state.errors?.username ? (
@@ -40,10 +43,11 @@ export function AuthForm({ mode }: AuthFormProps) {
       {!isLogin ? (
         <>
           <label className="grid gap-2 text-sm font-semibold">
-            公开昵称
+            公开昵称（2–20 个字符，可用中文）
             <input
               className="focus-ring min-h-11 rounded-md border border-black/15 px-3 text-base font-normal"
               name="displayName"
+              minLength={2}
               maxLength={20}
               required
             />
