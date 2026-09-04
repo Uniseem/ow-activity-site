@@ -245,13 +245,11 @@ async function handleApi(request: Request, env: Env) {
     const automated = autoReview(username, displayName);
     const hashed = await passwordHash(password);
     const userId = id();
-    await env.DB.prepare(`INSERT INTO users (id,username,password_hash,password_salt,display_name,slogan,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)`)
-      .bind(userId, username, hashed.hash, hashed.salt, displayName, slogan, timestamp, timestamp).run();
-    if (automated !== "CLEAR") {
-      await env.DB.prepare("UPDATE users SET status='REJECTED', review_status='REJECTED', review_note=?, auto_review=? WHERE id=?")
-        .bind("[自动审核] 疑似测试或刷号账号，请管理员复核。", automated, userId).run();
-    }
-    return json({ ok: true }, 201, { "set-cookie": await createSession(userId, request, env) });
+    const status = automated === "CLEAR" ? "APPROVED" : automated === "REJECTED" ? "REJECTED" : "PENDING";
+    const note = automated === "CLEAR" ? "[自动审核] 未发现明显风险，已自动通过。" : automated === "REJECTED" ? "[自动审核] 疑似测试或刷号账号，请管理员复核。" : "[自动审核] 存在可疑特征，请管理员复核。";
+    await env.DB.prepare(`INSERT INTO users (id,username,password_hash,password_salt,display_name,slogan,status,review_status,review_note,auto_review,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .bind(userId, username, hashed.hash, hashed.salt, displayName, slogan, status, status === "APPROVED" ? "APPROVED" : status === "REJECTED" ? "REJECTED" : "PENDING", note, automated, timestamp, timestamp).run();
+    return json({ ok: true, status, autoReview: automated }, 201, { "set-cookie": await createSession(userId, request, env) });
   }
 
   if (method === "POST" && path === "/api/login") {
@@ -299,10 +297,13 @@ async function handleApi(request: Request, env: Env) {
     if (!event) return fail("活动不存在或未开放。", 404);
     const data = await body(request);
     const heroes = Array.isArray(data.heroes) ? data.heroes.map((v) => text(v, 24)).filter(Boolean).slice(0, 12) : [];
+    const selectedRole = text(data.preferredRole, 20) || user.main_role || "";
+    const selectedRank = text(data.rank, 40) || user.rank || "";
+    if (!selectedRank) return fail("请填写本次活动使用的段位。", 400);
     try {
       const timestamp = now();
       await env.DB.prepare(`INSERT INTO registrations (id,event_id,user_id,preferred_role,rank,heroes,voice_available,note,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-        .bind(id(), registrationMatch[1], user.id, text(data.preferredRole, 20) || user.main_role || null, text(data.rank, 40) || user.rank || null, JSON.stringify(heroes.length ? heroes : safeArray(user.main_heroes)), data.voiceAvailable ? 1 : 0, text(data.note, 300) || null, "APPROVED", timestamp, timestamp).run();
+        .bind(id(), registrationMatch[1], user.id, selectedRole || null, selectedRank, JSON.stringify(heroes.length ? heroes : safeArray(user.main_heroes)), data.voiceAvailable ? 1 : 0, text(data.note, 300) || null, "APPROVED", timestamp, timestamp).run();
       return json({ ok: true }, 201);
     } catch { return fail("你已经报名过这个活动。", 409); }
   }

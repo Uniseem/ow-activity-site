@@ -113,7 +113,7 @@ async function submitLogin(event) {
 }
 async function submitRegister(event) {
   event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget));
-  try { await api("/api/register", { method: "POST", body: JSON.stringify(values) }); await refresh(); location.hash = "me"; notify("注册成功，请完善资料并等待审核。"); } catch (error) { notify(error.message); }
+  try { const result = await api("/api/register", { method: "POST", body: JSON.stringify(values) }); await refresh(); location.hash = "me"; notify(result.status === "APPROVED" ? "注册成功，账号已自动通过审核。" : "注册成功，请完善资料并等待审核。"); } catch (error) { notify(error.message); }
 }
 async function submitProfile(event) {
   event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget)); values.mainHeroes = String(values.mainHeroes || "").split(/[,，]/).map((v) => v.trim()).filter(Boolean);
@@ -139,6 +139,7 @@ async function openRegistration(eventId) {
   if (preferredRole === null) return;
   const rank = prompt("本次活动使用的段位（默认沿用资料，仅管理员可见）：", state.user?.rank || "");
   if (rank === null) return;
+  if (!rank.trim()) { notify("请填写本次活动使用的段位。"); return; }
   const note = prompt("报名备注（可留空）：", "");
   try { await api(`/api/events/${eventId}/register`, { method: "POST", body: JSON.stringify({ preferredRole, rank, note, heroes: state.user?.mainHeroes || [], voiceAvailable: true }) }); notify("报名已提交。"); } catch (error) { notify(error.message); }
 }
