@@ -1,4 +1,8 @@
+import "server-only";
+
 import { PrismaPg } from "@prisma/adapter-pg";
+import { attachDatabasePool } from "@vercel/functions";
+import { Pool } from "pg";
 
 import { PrismaClient } from "@/generated/prisma/client";
 
@@ -9,26 +13,30 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 export function isDatabaseConfigured() {
-  const databaseUrl = process.env.DATABASE_URL;
-
-  return Boolean(
-    databaseUrl &&
-      !databaseUrl.includes("johndoe:randompassword@localhost") &&
-      !databaseUrl.includes("USER:PASSWORD@HOST") &&
-      !databaseUrl.includes("localhost:5432/mydb"),
-  );
+  return Boolean(process.env.DATABASE_URL?.trim());
 }
 
 export function assertDatabaseConfigured() {
   if (!isDatabaseConfigured()) {
-    throw new Error("数据库还没有配置。请先设置 DATABASE_URL 并执行数据库初始化。");
+    throw new Error("数据库还没有配置。请先设置 DATABASE_URL 并执行 npm run db:deploy。");
   }
 }
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({
-    connectionString: process.env.DATABASE_URL ?? FALLBACK_DATABASE_URL,
+  // Local UI previews can run without a database. Vercel must use real storage.
+  if (process.env.VERCEL === "1") {
+    assertDatabaseConfigured();
+  }
+
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL?.trim() || FALLBACK_DATABASE_URL,
+    max: 5,
+    idleTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000,
   });
+
+  attachDatabasePool(pool);
+  const adapter = new PrismaPg(pool);
 
   return new PrismaClient({ adapter });
 }

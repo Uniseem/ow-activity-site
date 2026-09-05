@@ -4,9 +4,15 @@ import { Header } from "@/components/header";
 
 import "./globals.css";
 
+export const runtime = "nodejs";
+
+const vercelHostname =
+  process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      (vercelHostname ? `https://${vercelHostname}` : "http://localhost:3000"),
   ),
   title: {
     default: "先锋活动站",

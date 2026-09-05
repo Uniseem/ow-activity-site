@@ -1,20 +1,33 @@
-import "dotenv/config";
+import "../env.config";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
 import { PrismaClient } from "../src/generated/prisma/client";
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" });
-const prisma = new PrismaClient({ adapter });
+let prisma: PrismaClient | undefined;
 
 async function main() {
   const username = process.env.ADMIN_USERNAME ?? "admin";
-  const password = process.env.ADMIN_PASSWORD ?? "ChangeMe123!";
+  const password = process.env.ADMIN_PASSWORD;
+  const connectionString =
+    process.env.DATABASE_URL_UNPOOLED?.trim() || process.env.DATABASE_URL?.trim();
+
+  if (!connectionString) {
+    throw new Error("请先设置 DATABASE_URL，再初始化管理员。");
+  }
+  if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) {
+    throw new Error("ADMIN_USERNAME 必须是 3–24 位字母、数字或下划线。");
+  }
+  if (!password || password.trim() !== password || password.length < 8 || Buffer.byteLength(password, "utf8") > 72) {
+    throw new Error("请设置 ADMIN_PASSWORD：至少 8 个字符、最多 72 字节，首尾不能有空白。");
+  }
+
+  prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { username },
     update: {
       passwordHash,
@@ -49,45 +62,14 @@ async function main() {
     },
   });
 
-  const existingEvent = await prisma.event.findFirst({
-    where: { title: "周末内战" },
-  });
-
-  if (!existingEvent) {
-    const startTime = new Date();
-    startTime.setDate(startTime.getDate() + 6);
-    startTime.setHours(20, 30, 0, 0);
-
-    const signupDeadline = new Date(startTime);
-    signupDeadline.setHours(18, 0, 0, 0);
-
-    await prisma.event.create({
-      data: {
-        title: "周末内战",
-        description: "轻松组队，按报名位置做基础平衡，优先照顾能全程语音的玩家。",
-        type: "SCRIM",
-        startTime,
-        signupDeadline,
-        maxParticipants: 12,
-        requirements: "资料审核通过后可报名。",
-        voiceChannel: "活动开始前由管理员通知。",
-        status: "OPEN",
-        createdById: admin.id,
-      },
-    });
-  }
-
   console.log(`Seeded admin account: ${username}`);
-  if (!process.env.ADMIN_PASSWORD) {
-    console.log("Default password: ChangeMe123!  Change it after first login.");
-  }
 }
 
 main()
   .catch((error) => {
     console.error(error);
-    process.exit(1);
+    process.exitCode = 1;
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await prisma?.$disconnect();
   });
