@@ -1,0 +1,108 @@
+.admin-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.admin-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.admin-list-row:last-child {
+  border-bottom: 0;
+}
+.admin-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.admin-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.admin-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.admin-disclosure > summary::after {
+  content: "＋";
+  flex-shrink: 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+.admin-disclosure[open] > summary::after {
+  content: "−";
+}
+.admin-disclosure > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 0.5rem;
+}
+.admin-disclosure > .admin-disclosure-body {
+  padding: 0 0 1rem;
+}
+.admin-user-card > summary {
+  padding: 1.25rem;
+}
+.admin-user-summary {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+.admin-user-card > .admin-disclosure-body {
+  border-top: 1px solid var(--border);
+  padding: 1.25rem;
+}
+.admin-settings-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+}
+.admin-setting-section {
+  max-width: 56rem;
+}
+@media (max-width: 767px) {
+  .admin-user-summary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .admin-user-statuses {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 639px) {
+  .admin-list-row {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 1rem;
+  }
+  .admin-filter-bar > form {
+    width: 100%;
+  }
+  .admin-filter-bar > form > div {
+    flex: 1;
+  }
+}

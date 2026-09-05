@@ -19,14 +19,10 @@ export type EventCardProps = {
 };
 export function EventCard({ event, hrefPrefix = "/events" }: EventCardProps) {
   const href = hrefPrefix + "/" + event.id;
-  const date = shanghaiDateValue(event.startTime).split("-");
   return (
     <Card className="event-card" data-type={event.type}>
       <div className="event-card-header">
-        <div className="date-tile" aria-hidden="true">
-          <strong>{date[2]}</strong>
-          <span>/ {date[1]} 月</span>
-        </div>
+        <span className="event-card-type">{eventTypeLabel(event)}</span>
         <StatusChip
           status={event.status}
           label={
@@ -35,7 +31,6 @@ export function EventCard({ event, hrefPrefix = "/events" }: EventCardProps) {
           }
           className="relative z-10"
         />
-        <span className="event-card-type">{eventTypeLabel(event)}</span>
       </div>
       <div className="event-card-body">
         <div className="flex-1">

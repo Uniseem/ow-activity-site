@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useEffect, useState } from "react";
-import { Button, Card, InputField, Notice } from "@/components/ui";
+import { Button, Card, Chip, InputField, Notice } from "@/components/ui";
 import { Checkbox } from "@heroui/react";
 import { UpdateDetails } from "@/components/update-details";
 import { saveUpdateSettingsAction } from "@/app/admin/updates/actions";
@@ -36,12 +36,18 @@ export function UpdateSettingsForm({
         setHook("");
         setClearHook(false);
         setResult(null);
+        setError("");
         window.dispatchEvent(new Event("ow-update-settings-saved"));
       }
       return saved;
     },
     { ok: false, message: "", settings: initial },
   );
+  const dirty =
+    repository.trim() !== state.settings.repositoryUrl ||
+    branch.trim() !== state.settings.branch ||
+    Boolean(hook) ||
+    clearHook;
   useEffect(() => {
     function receive(event: Event) {
       setResult((event as CustomEvent<UpdateCheck>).detail);
@@ -50,6 +56,7 @@ export function UpdateSettingsForm({
     return () => window.removeEventListener("ow-update-result", receive);
   }, []);
   async function check() {
+    if (checking || pending) return;
     setChecking(true);
     setError("");
     try {
@@ -66,130 +73,31 @@ export function UpdateSettingsForm({
     }
   }
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-2">
-      <Card className="gap-5 border border-border p-6 shadow-none">
-        <div>
-          <h2 className="section-title">更新来源</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            登录后自动检查；保持登录时每 5
-            分钟检查一次。有更新时列出当前部署之后的提交。
-          </p>
-        </div>
-        <form
-          action={action}
-          onResetCapture={(event) => event.preventDefault()}
-          className="grid gap-5"
-        >
-          <input
-            type="hidden"
-            name="revision"
-            value={state.settings.revision}
-          />
-          <InputField
-            label="GitHub 仓库链接"
-            name="repositoryUrl"
-            type="url"
-            required
-            value={repository}
-            onChange={(event) => setRepository(event.target.value)}
-            maxLength={300}
-            description="支持公开仓库，填写仓库首页链接。"
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="w-fit"
-            onPress={() => {
-              setRepository(DEFAULT_REPOSITORY);
-              setBranch("");
-            }}
-          >
-            使用默认仓库
-          </Button>
-          <InputField
-            label="监测分支（可选）"
-            name="branch"
-            value={branch}
-            onChange={(event) => setBranch(event.target.value)}
-            maxLength={200}
-            placeholder="留空使用仓库默认分支"
-          />
-          <InputField
-            label="Vercel Deploy Hook"
-            name="deployHook"
-            type="password"
-            autoComplete="new-password"
-            value={hook}
-            onChange={(event) => setHook(event.target.value)}
-            maxLength={1000}
-            placeholder={
-              state.settings.hasDeployHook
-                ? "已配置，留空保留"
-                : "未配置，填写后才能一键更新"
-            }
-            description="链接加密保存，不会回显。"
-          />
-          {state.settings.hasDeployHook ? (
-            <Checkbox
-              name="clearDeployHook"
-              value="on"
-              isSelected={clearHook}
-              onChange={setClearHook}
-            >
-              <Checkbox.Content>
-                <Checkbox.Control>
-                  <Checkbox.Indicator />
-                </Checkbox.Control>
-                清除已保存的 Deploy Hook
-              </Checkbox.Content>
-            </Checkbox>
-          ) : null}
-          <p className="text-xs leading-6 text-muted">
-            更换仓库或分支后，请重新填写对应的 Deploy Hook。留空保存会清除旧
-            Hook。
-          </p>
-          {state.message ? (
-            <Notice tone={state.ok ? "success" : "danger"}>
-              {state.message}
-            </Notice>
-          ) : null}
-          <Button type="submit" isPending={pending}>
-            保存更新设置
-          </Button>
-        </form>
-        <div className="space-y-2 border-t border-border pt-4 text-sm leading-6 text-muted">
-          <p>
-            在 Vercel 项目 Settings → Git → Deploy Hooks 创建生产分支的
-            Hook，再复制到这里。
-          </p>
-          <p>
-            Hook
-            会部署它绑定的仓库和分支。如果监测的是另一个上游仓库，需要先将改动同步到本站部署仓库。
-          </p>
-          <a
-            href="https://vercel.com/docs/deploy-hooks"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent underline"
-          >
-            查看 Vercel 配置说明
-          </a>
-        </div>
-      </Card>
+    <div className="admin-setting-section grid gap-5">
       <Card className="gap-5 border border-border p-6 shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="section-title">版本状态</h2>
+          <div>
+            <h2 className="section-title">版本状态</h2>
+            <p className="mt-1 text-sm text-muted">
+              登录后台后自动检查，有更新时主动提示。
+            </p>
+          </div>
           <Button
             variant="secondary"
             size="sm"
+            isDisabled={pending || checking || dirty}
             isPending={checking}
             onPress={check}
           >
-            立即检查
+            {checking ? "正在检查…" : "立即检查"}
           </Button>
         </div>
         {error ? <Notice tone="warning">{error}</Notice> : null}
+        {dirty ? (
+          <p className="text-sm text-muted">
+            更新来源有未保存的修改，保存后可重新检查。
+          </p>
+        ) : null}
         {result ? (
           <UpdateDetails
             key={`${result.revision}:${result.latestSha}:${result.checkedAt}`}
@@ -198,9 +106,143 @@ export function UpdateSettingsForm({
         ) : (
           <p className="text-sm leading-6 text-muted">
             当前部署：<code>{currentSha.slice(0, 7) || "未识别"}</code>
-            。可以点击“立即检查”查看详细状态。
+            。点击“立即检查”查看最新状态。
           </p>
         )}
+      </Card>
+      <Card className="gap-3 border border-border px-6 py-3 shadow-none">
+        <details className="admin-disclosure" open={!initial.hasDeployHook}>
+          <summary>
+            <span>更新设置</span>
+            <Chip
+              size="sm"
+              variant="soft"
+              color={state.settings.hasDeployHook ? "success" : "default"}
+            >
+              {state.settings.hasDeployHook
+                ? "已配置一键部署"
+                : "未配置一键部署"}
+            </Chip>
+          </summary>
+          <form
+            action={action}
+            onResetCapture={(event) => event.preventDefault()}
+            className="admin-disclosure-body grid gap-5"
+          >
+            <input
+              type="hidden"
+              name="revision"
+              value={state.settings.revision}
+            />
+            <fieldset disabled={pending} className="grid min-w-0 gap-5">
+              <InputField
+                label="GitHub 仓库链接"
+                name="repositoryUrl"
+                type="url"
+                required
+                value={repository}
+                onChange={(event) => setRepository(event.target.value)}
+                maxLength={300}
+                description="支持公开仓库，填写仓库首页链接。"
+              />
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  isDisabled={pending}
+                  onPress={() => {
+                    setRepository(DEFAULT_REPOSITORY);
+                    setBranch("");
+                  }}
+                >
+                  恢复默认仓库
+                </Button>
+              </div>
+              <InputField
+                label="监测分支（可选）"
+                name="branch"
+                value={branch}
+                onChange={(event) => setBranch(event.target.value)}
+                maxLength={200}
+                placeholder="留空使用仓库默认分支"
+              />
+              <InputField
+                label="Vercel Deploy Hook"
+                name="deployHook"
+                type="password"
+                autoComplete="new-password"
+                value={hook}
+                onChange={(event) => setHook(event.target.value)}
+                maxLength={1000}
+                placeholder={
+                  state.settings.hasDeployHook
+                    ? "已配置，留空保留"
+                    : "填写后才能一键更新"
+                }
+                description="链接加密保存，不会回显。更换仓库或分支时需重新填写对应 Hook，否则会清除旧 Hook。"
+              />
+              <details className="admin-disclosure border-t border-border">
+                <summary>
+                  部署配置说明{state.settings.hasDeployHook ? "与清除选项" : ""}
+                </summary>
+                <div className="admin-disclosure-body grid gap-3 text-sm leading-6 text-muted">
+                  <p>
+                    在 Vercel 项目的 Settings → Git → Deploy Hooks
+                    中创建生产分支的 Hook，复制到上方。Hook
+                    会部署它绑定的仓库和分支。
+                  </p>
+                  <p>监测上游仓库时，需要先将改动同步到本站部署仓库。</p>
+                  <a
+                    href="https://vercel.com/docs/deploy-hooks"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent underline"
+                  >
+                    查看 Vercel 配置说明
+                  </a>
+                  {state.settings.hasDeployHook ? (
+                    <Checkbox
+                      name="clearDeployHook"
+                      value="on"
+                      isSelected={clearHook}
+                      isDisabled={pending}
+                      onChange={setClearHook}
+                    >
+                      <Checkbox.Content>
+                        <Checkbox.Control>
+                          <Checkbox.Indicator />
+                        </Checkbox.Control>
+                        清除已保存的 Deploy Hook
+                      </Checkbox.Content>
+                    </Checkbox>
+                  ) : null}
+                </div>
+              </details>
+            </fieldset>
+            <div className="admin-settings-footer">
+              <p className="text-xs text-muted">
+                {dirty
+                  ? "有未保存的修改"
+                  : state.settings.revision > 0
+                    ? "更新设置已保存"
+                    : "使用默认更新设置"}
+              </p>
+              <Button
+                type="submit"
+                isPending={pending}
+                isDisabled={pending || !dirty}
+              >
+                {pending ? "正在保存…" : "保存设置"}
+              </Button>
+            </div>
+            {state.message && (!state.ok || !dirty) ? (
+              <Notice tone={state.ok ? "success" : "danger"}>
+                {state.message}
+              </Notice>
+            ) : null}
+          </form>
+        </details>
       </Card>
     </div>
   );

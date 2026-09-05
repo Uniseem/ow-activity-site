@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Card, Spinner } from "@heroui/react";
+import { Button, Spinner } from "@heroui/react";
 import { ArrowUpRight, Save } from "lucide-react";
 import { InputField, Notice, TextAreaField } from "@/components/ui";
 import { copyFields } from "@/lib/site-copy";
@@ -83,16 +83,14 @@ export function SiteEditor({
           <ArrowUpRight size={15} />
         </Link>
       </div>
-      {state.message ? (
-        <Notice tone={state.ok ? "success" : "danger"}>{state.message}</Notice>
-      ) : null}
       {groups.map((group) => (
-        <Card
+        <details
           key={group}
-          className="gap-5 border border-border p-5 shadow-none sm:p-7"
+          open={group === "品牌信息"}
+          className="admin-disclosure rounded-xl border border-border bg-surface px-5"
         >
-          <h2 className="font-semibold">{group}</h2>
-          <div className="grid gap-5 sm:grid-cols-2">
+          <summary>{group}</summary>
+          <div className="admin-disclosure-body grid gap-5 sm:grid-cols-2">
             {copyFields
               .filter((field) => field.group === group)
               .map((field) => {
@@ -119,73 +117,83 @@ export function SiteEditor({
                 );
               })}
           </div>
-        </Card>
+        </details>
       ))}
-      <Card className="gap-5 border border-border p-5 shadow-none sm:p-7">
-        <div>
-          <h2 className="font-semibold">品牌图片</h2>
-          <p className="mt-2 text-xs leading-6 text-muted">
-            填写图片链接或直接上传，支持 PNG / JPEG / WebP / GIF，最大 2 MB。
-          </p>
-        </div>
-        <div className="grid gap-6 md:grid-cols-2">
-          {imageFields.map((field) => (
-            <ImageSetting
-              key={field.key}
-              label={field.label}
-              description={field.description}
-              value={draft.images[field.key]}
-              defaultValue={field.defaultValue}
+      <details className="admin-disclosure rounded-xl border border-border bg-surface px-5">
+        <summary>品牌图片与主题色</summary>
+        <div className="admin-disclosure-body grid gap-5">
+          <div>
+            <p className="mt-2 text-xs leading-6 text-muted">
+              填写图片链接或直接上传，支持 PNG / JPEG / WebP / GIF，最大 2 MB。
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {imageFields.map((field) => (
+              <ImageSetting
+                key={field.key}
+                label={field.label}
+                description={field.description}
+                value={draft.images[field.key]}
+                defaultValue={field.defaultValue}
+                disabled={busy}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    images: { ...current.images, [field.key]: value },
+                  }))
+                }
+                onUploadStart={() => setUploadCount((count) => count + 1)}
+                onUploadEnd={() => setUploadCount((count) => count - 1)}
+              />
+            ))}
+          </div>
+          <div className="flex max-w-sm items-end gap-3 border-t border-separator pt-5">
+            <input
+              type="color"
+              aria-label="主题色取色器"
+              value={
+                /^#[0-9a-fA-F]{6}$/.test(draft.accent)
+                  ? draft.accent
+                  : defaultSiteConfiguration.accent
+              }
               disabled={busy}
-              onChange={(value) =>
+              onChange={(event) =>
                 setDraft((current) => ({
                   ...current,
-                  images: { ...current.images, [field.key]: value },
+                  accent: event.target.value,
                 }))
               }
-              onUploadStart={() => setUploadCount((count) => count + 1)}
-              onUploadEnd={() => setUploadCount((count) => count - 1)}
+              className="h-11 w-14 shrink-0 cursor-pointer rounded-lg border border-border bg-transparent p-1"
             />
-          ))}
+            <InputField
+              label="主题色"
+              value={draft.accent}
+              disabled={busy}
+              maxLength={7}
+              pattern="#[0-9a-fA-F]{6}"
+              required
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  accent: event.target.value,
+                }))
+              }
+            />
+          </div>
         </div>
-        <div className="flex max-w-sm items-end gap-3 border-t border-separator pt-5">
-          <input
-            type="color"
-            aria-label="主题色取色器"
-            value={
-              /^#[0-9a-fA-F]{6}$/.test(draft.accent)
-                ? draft.accent
-                : defaultSiteConfiguration.accent
-            }
-            disabled={busy}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                accent: event.target.value,
-              }))
-            }
-            className="h-11 w-14 shrink-0 cursor-pointer rounded-lg border border-border bg-transparent p-1"
-          />
-          <InputField
-            label="主题色"
-            value={draft.accent}
-            disabled={busy}
-            maxLength={7}
-            pattern="#[0-9a-fA-F]{6}"
-            required
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                accent: event.target.value,
-              }))
-            }
-          />
+      </details>
+      <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
+        <div className="min-w-0 flex-1" aria-live="polite">
+          {state.message && (!state.ok || !dirty) ? (
+            <Notice tone={state.ok ? "success" : "danger"}>
+              {state.message}
+            </Notice>
+          ) : (
+            <p className="text-xs text-muted">
+              {dirty ? "有未保存的修改" : "所有设置已保存"}
+            </p>
+          )}
         </div>
-      </Card>
-      <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4 shadow-lg">
-        <p className="text-xs text-muted">
-          {dirty ? "有未保存的修改" : "所有设置已保存"}
-        </p>
         <div className="flex gap-2">
           <Button
             type="button"

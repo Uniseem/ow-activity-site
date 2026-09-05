@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, LockKeyhole } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useActionState } from "react";
 import { Spinner } from "@heroui/react";
@@ -76,10 +76,6 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         {!pending ? <ArrowRight size={17} /> : null}
       </Button>
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
-        <span className="flex items-center gap-1.5">
-          <LockKeyhole size={13} />
-          密码加密存储
-        </span>
         <Link
           href={isLogin ? "/register" : "/login"}
           className="font-medium text-accent hover:underline"

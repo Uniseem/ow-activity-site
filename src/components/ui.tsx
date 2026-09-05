@@ -134,6 +134,7 @@ export function SelectField({
   required,
   disabled,
   placeholder = "请选择",
+  onChange,
 }: {
   label: string;
   name: string;
@@ -142,11 +143,13 @@ export function SelectField({
   required?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  onChange?: ComponentProps<typeof Select>["onChange"];
 }) {
   return (
     <Select
       name={name}
       defaultValue={defaultValue ?? null}
+      onChange={onChange}
       isRequired={required}
       isDisabled={disabled}
       placeholder={placeholder}

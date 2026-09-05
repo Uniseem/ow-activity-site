@@ -66,9 +66,8 @@ export default async function MePage({
   return (
     <main className="page-shell">
       <PageHeading
-        eyebrow="我的社区空间"
         title="个人中心"
-        description="管理玩家卡片、查看报名进度，为下一次集结做好准备。"
+        description="编辑玩家资料，查看报名和登录方式。"
       />
       {typeof query.oauth === "string" && oauthMessages[query.oauth] ? (
         <div className="mb-5">

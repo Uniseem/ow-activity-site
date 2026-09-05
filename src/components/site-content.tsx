@@ -39,6 +39,11 @@ export function SiteLogo() {
 }
 export function SiteCover() {
   const config = useSiteConfiguration();
+  if (
+    !config.images.event ||
+    ["/arena-v2.webp", "/arena-cover.png"].includes(config.images.event)
+  )
+    return null;
   return (
     <div
       className="event-cover"

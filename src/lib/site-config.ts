@@ -17,15 +17,15 @@ export const imageFields = [
   },
   {
     key: "hero",
-    label: "首页背景图",
-    description: "建议使用横向图片，文字区域保留深色遮罩。",
-    defaultValue: "/arena-v2.webp",
+    label: "首页配图",
+    description: "可选，显示在首页简介旁。建议横向图片，留空不显示。",
+    defaultValue: "",
   },
   {
     key: "event",
     label: "活动默认封面",
     description: "所有活动详情页使用的默认头图。",
-    defaultValue: "/arena-v2.webp",
+    defaultValue: "",
   },
 ] as const;
 export type ImageKey = (typeof imageFields)[number]["key"];

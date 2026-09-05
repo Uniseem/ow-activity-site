@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateSiteConfiguration } from "@/lib/site-config";
 import { validateSiteAsset } from "@/lib/site-asset";
@@ -85,8 +85,15 @@ export async function saveSiteSettingsAction(
 }
 export async function uploadSiteAssetAction(
   formData: FormData,
-): Promise<{ url?: string; error?: string }> {
-  const admin = await requireAdmin();
+): Promise<{ url?: string; error?: string; authRequired?: boolean }> {
+  const admin = await getCurrentUser();
+  if (!admin || admin.role !== "ADMIN" || admin.status !== "APPROVED") {
+    return {
+      error:
+        "登录已失效或当前账号没有管理员权限，请重新登录后上传。当前填写内容已保留。",
+      authRequired: true,
+    };
+  }
   const file = formData.get("file");
   if (!(file instanceof File)) return { error: "请选择图片。" };
   try {

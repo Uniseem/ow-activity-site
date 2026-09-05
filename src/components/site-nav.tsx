@@ -4,16 +4,11 @@ import { Dropdown } from "@heroui/react";
 import {
   ArrowLeft,
   ArrowUpRight,
-  CalendarDays,
   ChevronDown,
   Crosshair,
-  Download,
-  KeyRound,
-  LayoutDashboard,
   LogOut,
   Settings2,
   UserRound,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -21,6 +16,8 @@ import { useTransition, type ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
 import { Avatar } from "@/components/avatar";
 import { ButtonLink } from "@/components/ui";
+import { AdminNav } from "@/components/admin-nav";
+import { adminNavigation, isAdminNavActive } from "@/lib/admin-navigation";
 import {
   SiteLogo,
   useSiteConfiguration,
@@ -31,15 +28,8 @@ type NavUser = { name: string; avatarUrl?: string | null; isAdmin: boolean };
 const communityLinks = [
   { href: "/", label: "首页" },
   { href: "/events", label: "社区活动" },
+  { href: "/articles", label: "社区文章" },
   { href: "/players", label: "交大玩家" },
-];
-const adminLinks = [
-  { href: "/admin", label: "管理概览", icon: LayoutDashboard },
-  { href: "/admin/users", label: "用户与资料", icon: Users },
-  { href: "/admin/events", label: "活动与报名", icon: CalendarDays },
-  { href: "/admin/customize", label: "站点设置", icon: Settings2 },
-  { href: "/admin/oauth", label: "第三方登录", icon: KeyRound },
-  { href: "/admin/updates", label: "版本更新", icon: Download },
 ];
 
 function Brand() {
@@ -97,11 +87,17 @@ function AccountMenu({ user }: { user: NavUser | null }) {
           <Dropdown.Item
             id="logout"
             textValue="退出登录"
-            onAction={() =>
+            onAction={() => {
+              if (
+                !window.dispatchEvent(
+                  new Event("community:before-leave", { cancelable: true }),
+                )
+              )
+                return;
               startTransition(async () => {
                 await logoutAction();
-              })
-            }
+              });
+            }}
           >
             <LogOut size={16} />
             退出登录
@@ -127,7 +123,10 @@ export function SiteNav({
       ? pathname === href
       : pathname === href || pathname.startsWith(href + "/");
   const pageLabel =
-    adminLinks.find((link) => active(link.href))?.label ?? "后台初始化";
+    adminNavigation
+      .flatMap((group) => group.links)
+      .find((link) => isAdminNavActive(pathname, link.href))?.label ??
+    "后台初始化";
 
   if (admin)
     return (
@@ -138,26 +137,24 @@ export function SiteNav({
         {user?.isAdmin ? (
           <aside className="site-sidebar" aria-label="管理后台侧栏">
             <Brand />
-            <div className="sidebar-section-label">管理后台</div>
             <nav className="sidebar-nav" aria-label="管理导航">
-              {adminLinks.map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`nav-link ${active(href) ? "active" : ""}`}
-                  aria-current={active(href) ? "page" : undefined}
-                >
-                  <Icon size={18} />
-                  <span>{label}</span>
-                </Link>
+              {adminNavigation.map((group) => (
+                <div key={group.label}>
+                  <p className="sidebar-section-label">{group.label}</p>
+                  {group.links.map(({ href, label, icon: Icon }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={`nav-link ${active(href) ? "active" : ""}`}
+                      aria-current={active(href) ? "page" : undefined}
+                    >
+                      <Icon size={18} />
+                      <span>{label}</span>
+                    </Link>
+                  ))}
+                </div>
               ))}
             </nav>
-            <div className="sidebar-bottom">
-              <Link href="/" className="nav-link">
-                <ArrowLeft size={17} />
-                返回社区网站
-              </Link>
-            </div>
           </aside>
         ) : null}
         <div
@@ -168,7 +165,8 @@ export function SiteNav({
               <ArrowLeft size={16} />
               返回社区
             </Link>
-            <span>{pageLabel}</span>
+            <span className="admin-location">{pageLabel}</span>
+            {user?.isAdmin ? <AdminNav /> : null}
             <AccountMenu user={user} />
           </header>
           <div className="site-workspace" id="page-content" tabIndex={-1}>
@@ -216,11 +214,11 @@ export function SiteNav({
         </div>
         <nav aria-label="页脚导航">
           <Link href="/events">参加活动</Link>
+          <Link href="/articles">社区文章</Link>
           <Link href="/me">我的报名</Link>
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- 跨页锚点使用原生定位 */}
           <a href="/#about-community">关于社区</a>
         </nav>
-        <span className="footer-signoff">{t("brand.badge")} / OVERWATCH</span>
       </footer>
     </div>
   );

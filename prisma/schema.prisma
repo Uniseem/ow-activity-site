@@ -61,7 +61,31 @@ enum RegistrationStatus {
   CANCELLED
 }
 
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Article {
+  id          String        @id @default(cuid())
+  title       String
+  excerpt     String        @default("")
+  coverUrl    String        @default("")
+  content     String        @default("")
+  status      ArticleStatus @default(DRAFT)
+  revision    Int           @default(1)
+  authorId    String
+  author      User          @relation(fields: [authorId], references: [id])
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([authorId])
+}
+
 model User {
+  articles             Article[]
   id                   String              @id @default(cuid())
   username             String              @unique
   passwordHash         String?

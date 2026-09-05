@@ -2,15 +2,11 @@ import {
   ArrowRight,
   CalendarDays,
   ClipboardCheck,
-  Clock,
-  Plus,
+  FilePenLine,
   Users,
-  Settings2,
-  Download,
 } from "lucide-react";
-import { AdminNav } from "@/components/admin-nav";
 import { PageHeading } from "@/components/page-heading";
-import { ButtonLink, Card } from "@/components/ui";
+import { ButtonLink, Card, Chip } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { syncEventStatuses } from "@/lib/event-schedule";
@@ -19,121 +15,104 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   await requireAdmin();
   await syncEventStatuses();
-  const [pendingProfiles, pendingRegistrations, openEvents, totalUsers] =
+  const [pendingProfiles, pendingRegistrations, openEvents, draftArticles] =
     await Promise.all([
       prisma.profile.count({ where: { reviewStatus: "PENDING" } }),
       prisma.eventRegistration.count({ where: { status: "PENDING" } }),
-      prisma.event.count({ where: { status: "OPEN" } }),
-      prisma.user.count(),
+      prisma.event.count({ where: { status: { in: ["OPEN", "RUNNING"] } } }),
+      prisma.article.count({ where: { status: "DRAFT" } }),
     ]);
-  const metrics = [
-    {
-      icon: Clock,
-      label: "待审资料",
-      value: pendingProfiles,
-      href: "/admin/users",
-    },
-    {
-      icon: ClipboardCheck,
-      label: "待审报名",
-      value: pendingRegistrations,
-      href: "/admin/events",
-    },
-    {
-      icon: CalendarDays,
-      label: "报名中活动",
-      value: openEvents,
-      href: "/admin/events",
-    },
-    { icon: Users, label: "注册用户", value: totalUsers, href: "/admin/users" },
-  ];
   return (
     <main className="page-shell">
-      <PageHeading
-        eyebrow="社区运营"
-        title="管理后台"
-        description="先处理待审申请，再安排下一场活动。社区的进展，都在这里。"
-        action={
-          <ButtonLink href="/admin/events/new">
-            <Plus size={17} />
-            创建活动
-          </ButtonLink>
-        }
-      />
-      <AdminNav />
-      <section
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        aria-label="社区概况"
-      >
-        {metrics.map(({ icon: Icon, label, value, href }) => (
-          <Card
-            key={label}
-            className="gap-5 border border-border p-6 shadow-none"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted">{label}</span>
-              <Icon size={18} className="text-accent" />
-            </div>
-            <p className="text-4xl font-semibold tabular-nums tracking-tight">
-              {value}
-            </p>
-            <ButtonLink
-              href={href}
-              variant="ghost"
-              size="sm"
-              className="w-fit px-0"
-            >
-              查看详情
-              <ArrowRight size={14} />
-            </ButtonLink>
-          </Card>
-        ))}
-      </section>
-      <section className="mt-8 grid gap-5 md:grid-cols-2" aria-label="管理入口">
+      <PageHeading title="工作台" description="待办和常用操作。" />
+      <Card className="gap-0 border border-border p-0 shadow-none">
+        <div className="border-b border-border px-6 py-5">
+          <h2 className="section-title">待处理</h2>
+          <p className="mt-1 text-sm text-muted">
+            {pendingProfiles + pendingRegistrations
+              ? "处理审核后，玩家会在个人页面看到结果。"
+              : "当前没有待审核申请。"}
+          </p>
+        </div>
         {[
           {
             icon: Users,
-            href: "/admin/users",
-            title: "用户与资料审核",
-            description: "查看玩家资料，处理审核申请，管理账号状态。",
+            title: "玩家资料审核",
+            count: pendingProfiles,
+            href: "/admin/users?status=PENDING",
           },
+          {
+            icon: ClipboardCheck,
+            title: "活动报名审核",
+            count: pendingRegistrations,
+            href: "/admin/events?filter=review",
+          },
+        ].map(({ icon: Icon, title, count, href }) => (
+          <div
+            key={href}
+            className="flex items-center justify-between gap-4 border-b border-border px-6 py-5 last:border-0"
+          >
+            <div className="flex items-center gap-3">
+              <Icon size={19} className="text-muted" />
+              <span className="font-medium">{title}</span>
+              <Chip
+                size="sm"
+                color={count ? "warning" : "default"}
+                variant="soft"
+              >
+                {count}
+              </Chip>
+            </div>
+            <ButtonLink
+              href={href}
+              variant={count ? "primary" : "secondary"}
+              size="sm"
+            >
+              {count ? "去审核" : "查看"}
+              <ArrowRight size={14} />
+            </ButtonLink>
+          </div>
+        ))}
+      </Card>
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        {[
           {
             icon: CalendarDays,
+            title: "活动",
+            description: `${openEvents} 场活动正在报名或进行中`,
             href: "/admin/events",
-            title: "活动与报名管理",
-            description: "发布新活动，调整活动安排，审核玩家报名。",
+            create: "/admin/events/new",
+            label: "创建活动",
           },
           {
-            icon: Settings2,
-            href: "/admin/customize",
-            title: "站点外观设置",
-            description: "设置社区名称、标志、背景图片和主题色。",
+            icon: FilePenLine,
+            title: "文章",
+            description: `${draftArticles} 篇草稿尚未发布`,
+            href: "/admin/articles",
+            create: "/admin/articles/new",
+            label: "写文章",
           },
-          {
-            icon: Download,
-            href: "/admin/updates",
-            title: "版本与更新",
-            description: "查看最新改动，管理更新来源并确认部署。",
-          },
-        ].map(({ icon: Icon, href, title, description }) => (
+        ].map(({ icon: Icon, title, description, href, create, label }) => (
           <Card
             key={href}
-            className="gap-5 border border-border p-7 shadow-none"
+            className="gap-5 border border-border p-6 shadow-none"
           >
-            <span className="icon-tile">
-              <Icon size={22} />
-            </span>
-            <div>
+            <div className="flex items-center gap-3">
+              <Icon size={19} />
               <h2 className="section-title">{title}</h2>
-              <p className="mt-2 text-sm leading-7 text-muted">{description}</p>
             </div>
-            <ButtonLink href={href} variant="secondary" className="w-fit">
-              进入管理
-              <ArrowRight size={15} />
-            </ButtonLink>
+            <p className="text-sm text-muted">{description}</p>
+            <div className="flex gap-2">
+              <ButtonLink href={create} variant="secondary" size="sm">
+                {label}
+              </ButtonLink>
+              <ButtonLink href={href} variant="ghost" size="sm">
+                查看全部
+              </ButtonLink>
+            </div>
           </Card>
         ))}
-      </section>
+      </div>
     </main>
   );
 }

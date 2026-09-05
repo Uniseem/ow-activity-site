@@ -1,5 +1,4 @@
 import { createEventAction } from "@/app/actions";
-import { AdminNav } from "@/components/admin-nav";
 import { EventForm } from "@/components/event-form";
 import { PageHeading } from "@/components/page-heading";
 import { ButtonLink, Card, Notice } from "@/components/ui";
@@ -16,7 +15,6 @@ export default async function NewEventPage({
   return (
     <main className="page-shell">
       <PageHeading
-        eyebrow="Create an event"
         title="创建活动"
         description="写下这场活动的安排，准备召集你的队友。"
         action={
@@ -25,7 +23,6 @@ export default async function NewEventPage({
           </ButtonLink>
         }
       />
-      <AdminNav />
       <div className="mx-auto grid max-w-4xl gap-5">
         {query.error ? (
           <Notice tone="danger">

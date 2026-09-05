@@ -30,9 +30,8 @@ export default async function PlayersPage({
   return (
     <main className="page-shell">
       <PageHeading
-        eyebrow="SJTU / 交大玩家"
-        title="同一个校园，同一份热爱。"
-        description="在交大找到一起玩守望的队友。看看大家的常用英雄和开黑宣言，从认识开始，慢慢打出默契。"
+        title="交大玩家"
+        description="按位置或常用英雄寻找同校队友。"
         action={
           <Chip variant="secondary">
             <Users size={14} />

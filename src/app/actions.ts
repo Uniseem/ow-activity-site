@@ -9,12 +9,14 @@ import {
   canJoinEvents,
   createSession,
   destroySession,
+  getCurrentUser,
   requireAdmin,
   requireUser,
 } from "@/lib/auth";
 import { avatarFileToDataUrl } from "@/lib/avatar-upload";
 import { assertDatabaseConfigured, prisma } from "@/lib/prisma";
 import { parseEventInput } from "@/lib/event-input";
+import { eventStatusLabels } from "@/lib/format";
 import { syncEventStatuses } from "@/lib/event-schedule";
 
 export type FormState = {
@@ -275,14 +277,50 @@ export async function updateProfileAction(formData: FormData) {
   redirect("/me?saved=profile");
 }
 
-export async function reviewProfileAction(formData: FormData) {
-  const admin = await requireAdmin();
+function userManagementReturn(formData: FormData, saved: string) {
+  const candidate = text(formData, "returnTo");
+  const params = new URLSearchParams(
+    candidate.startsWith("/admin/users?")
+      ? candidate.slice("/admin/users?".length)
+      : "",
+  );
+  const safe = new URLSearchParams();
+  for (const key of ["status", "q", "page"]) {
+    const value = params.get(key);
+    if (value) safe.set(key, value.slice(0, 100));
+  }
+  safe.set("saved", saved);
+  return "/admin/users?" + safe;
+}
+
+export type AdminUserFormResult = {
+  ok: boolean;
+  message: string;
+  authRequired?: boolean;
+  redirectTo?: string;
+};
+
+export async function reviewProfileAction(
+  formData: FormData,
+): Promise<AdminUserFormResult> {
+  const admin = await getCurrentUser();
+  if (!admin || admin.role !== "ADMIN" || admin.status !== "APPROVED") {
+    return {
+      ok: false,
+      authRequired: true,
+      message:
+        "登录已失效或当前账号没有管理员权限。审核备注已保留，重新登录后可继续操作。",
+    };
+  }
   const profileId = text(formData, "profileId");
   const decision = text(formData, "decision");
   const note = text(formData, "reviewNote");
 
   if (!profileId || !["APPROVED", "REJECTED"].includes(decision)) {
-    redirect("/admin/users");
+    return {
+      ok: false,
+      message: "审核信息无效，请检查后重试。填写内容已保留。",
+    };
   }
 
   const approved = decision === "APPROVED";
@@ -291,32 +329,54 @@ export async function reviewProfileAction(formData: FormData) {
     : ("REJECTED" as const);
   const userStatus = approved ? ("APPROVED" as const) : ("REJECTED" as const);
 
-  await prisma.$transaction(async (tx) => {
-    const profile = await tx.profile.update({
-      where: { id: profileId },
-      data: {
-        reviewStatus: profileStatus,
-        reviewNote: note || null,
-        reviewedById: admin.id,
-        reviewedAt: new Date(),
-      },
-      select: { userId: true },
-    });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const profile = await tx.profile.update({
+        where: { id: profileId },
+        data: {
+          reviewStatus: profileStatus,
+          reviewNote: note || null,
+          reviewedById: admin.id,
+          reviewedAt: new Date(),
+        },
+        select: { userId: true },
+      });
 
-    await tx.user.update({
-      where: { id: profile.userId },
-      data: { status: userStatus },
+      await tx.user.update({
+        where: { id: profile.userId },
+        data: { status: userStatus },
+      });
     });
-  });
+  } catch {
+    return {
+      ok: false,
+      message: "审核失败，资料可能已发生变化。审核备注已保留，请重试。",
+    };
+  }
 
   revalidatePath("/");
   revalidatePath("/players");
   revalidatePath("/admin/users");
-  redirect("/admin/users");
+  revalidatePath("/admin");
+  return {
+    ok: true,
+    message: approved ? "资料已通过审核。" : "资料已拒绝。",
+    redirectTo: userManagementReturn(formData, decision),
+  };
 }
 
-export async function updateUserStatusAction(formData: FormData) {
-  await requireAdmin();
+export async function updateUserStatusAction(
+  formData: FormData,
+): Promise<AdminUserFormResult> {
+  const admin = await getCurrentUser();
+  if (!admin || admin.role !== "ADMIN" || admin.status !== "APPROVED") {
+    return {
+      ok: false,
+      authRequired: true,
+      message:
+        "登录已失效或当前账号没有管理员权限。当前选择已保留，重新登录后可继续操作。",
+    };
+  }
   const userId = text(formData, "userId");
   const status = text(formData, "status");
 
@@ -324,16 +384,33 @@ export async function updateUserStatusAction(formData: FormData) {
     !userId ||
     !["PENDING", "APPROVED", "REJECTED", "BANNED"].includes(status)
   ) {
-    redirect("/admin/users");
+    return {
+      ok: false,
+      message: "账号状态无效，请检查后重试。当前选择已保留。",
+    };
   }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { status: status as "PENDING" | "APPROVED" | "REJECTED" | "BANNED" },
-  });
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        status: status as "PENDING" | "APPROVED" | "REJECTED" | "BANNED",
+      },
+    });
+  } catch {
+    return {
+      ok: false,
+      message: "账号状态更新失败，用户可能已发生变化。当前选择已保留，请重试。",
+    };
+  }
 
   revalidatePath("/admin/users");
-  redirect("/admin/users");
+  revalidatePath("/admin");
+  return {
+    ok: true,
+    message: "账号状态已更新。",
+    redirectTo: userManagementReturn(formData, "status"),
+  };
 }
 
 function eventFormInput(formData: FormData) {
@@ -353,31 +430,85 @@ function eventFormInput(formData: FormData) {
   );
 }
 
-export async function createEventAction(formData: FormData) {
-  const admin = await requireAdmin();
+export type EventFormResult = {
+  ok: boolean;
+  message: string;
+  redirectTo?: string;
+  authRequired?: boolean;
+};
+
+export async function createEventAction(
+  formData: FormData,
+): Promise<EventFormResult> {
+  const admin = await getCurrentUser();
+  if (!admin || admin.role !== "ADMIN" || admin.status !== "APPROVED") {
+    return {
+      ok: false,
+      authRequired: true,
+      message:
+        "登录已失效或当前账号没有管理员权限。填写内容已保留，重新登录后可继续保存。",
+    };
+  }
   const parsed = parseEventInput(eventFormInput(formData));
-  if (!parsed.ok) redirect("/admin/events/new?error=" + parsed.error);
+  if (!parsed.ok)
+    return {
+      ok: false,
+      message:
+        parsed.error === "date"
+          ? "请填写有效日期，报名截止日期不得晚于活动日期。"
+          : "活动信息格式有误，请检查必填内容与字数限制。",
+    };
   const event = await prisma.event.create({
     data: { ...parsed.data, createdById: admin.id },
   });
   revalidatePath("/");
   revalidatePath("/events");
   revalidatePath("/admin/events");
-  redirect(`/admin/events/${event.id}`);
+  revalidatePath("/admin");
+  return {
+    ok: true,
+    message:
+      event.status === "DRAFT"
+        ? "活动草稿已创建，仅管理员可见。"
+        : "活动已创建并发布。",
+    redirectTo: `/admin/events/${event.id}?created=1&view=settings`,
+  };
 }
 
-export async function updateEventAction(formData: FormData) {
-  await requireAdmin();
+export async function updateEventAction(
+  formData: FormData,
+): Promise<EventFormResult> {
+  const admin = await getCurrentUser();
+  if (!admin || admin.role !== "ADMIN" || admin.status !== "APPROVED") {
+    return {
+      ok: false,
+      authRequired: true,
+      message:
+        "登录已失效或当前账号没有管理员权限。填写内容已保留，重新登录后可继续保存。",
+    };
+  }
   const eventId = text(formData, "eventId");
   if (!eventId) redirect("/admin/events");
   const parsed = parseEventInput(eventFormInput(formData));
-  if (!parsed.ok) redirect(`/admin/events/${eventId}?error=${parsed.error}`);
+  if (!parsed.ok)
+    return {
+      ok: false,
+      message:
+        parsed.error === "date"
+          ? "请填写有效日期，报名截止日期不得晚于活动日期。"
+          : "活动信息格式有误，请检查必填内容与字数限制。",
+    };
   await prisma.event.update({ where: { id: eventId }, data: parsed.data });
   revalidatePath("/");
   revalidatePath("/events");
   revalidatePath("/admin/events");
   revalidatePath(`/events/${eventId}`);
-  redirect(`/admin/events/${eventId}?saved=1`);
+  revalidatePath(`/admin/events/${eventId}`);
+  revalidatePath("/admin");
+  return {
+    ok: true,
+    message: `活动已保存 · ${eventStatusLabels[parsed.data.status]}${parsed.data.status === "DRAFT" ? "，仅管理员可见。" : "，前台已同步更新。"}`,
+  };
 }
 
 export async function registerEventAction(formData: FormData) {
@@ -524,8 +655,11 @@ export async function reviewRegistrationAction(formData: FormData) {
   revalidatePath("/events");
   revalidatePath(`/events/${eventId}`);
   revalidatePath(`/admin/events/${eventId}`);
-  const error = result === "saved" ? "" : "&error=" + result;
+  const feedback =
+    result === "saved" ? "&reviewed=" + decision : "&error=" + result;
+  revalidatePath("/admin");
+  revalidatePath("/admin/events");
   redirect(
-    `/admin/events/${eventId}?review=${reviewTab}${error}#registration-review`,
+    `/admin/events/${eventId}?review=${reviewTab}${feedback}#registration-review`,
   );
 }

@@ -8,9 +8,11 @@ import { eventTypeLabels } from "@/lib/format";
 export function EventTypeField({
   defaultType = "FUN",
   defaultCustomType = "",
+  onChange,
 }: {
   defaultType?: string;
   defaultCustomType?: string | null;
+  onChange?: () => void;
 }) {
   const [type, setType] = useState(defaultType);
   const [customType, setCustomType] = useState(defaultCustomType ?? "");
@@ -28,6 +30,7 @@ export function EventTypeField({
       setError("请输入 1–30 字的活动类型。");
       return;
     }
+    if (type !== "CUSTOM" || name !== customType) onChange?.();
     setCustomType(name);
     setType("CUSTOM");
     setIsOpen(false);
@@ -44,7 +47,11 @@ export function EventTypeField({
         value={type}
         onChange={(key) => {
           if (key === "CUSTOM") openEditor();
-          else setType(String(key));
+          else {
+            const nextType = String(key);
+            if (nextType !== type) onChange?.();
+            setType(nextType);
+          }
         }}
         isRequired
         variant="secondary"

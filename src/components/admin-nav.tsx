@@ -1,43 +1,46 @@
 "use client";
 
-import {
-  CalendarDays,
-  LayoutDashboard,
-  Users,
-  Settings2,
-  KeyRound,
-  Download,
-} from "lucide-react";
-import Link from "next/link";
+import { Dropdown } from "@heroui/react";
+import { ChevronDown } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { adminNavigation, isAdminNavActive } from "@/lib/admin-navigation";
 
 export function AdminNav() {
-  const links = [
-    { href: "/admin", label: "概览", icon: LayoutDashboard },
-    { href: "/admin/users", label: "用户与资料", icon: Users },
-    { href: "/admin/events", label: "活动与报名", icon: CalendarDays },
-    { href: "/admin/customize", label: "站点设置", icon: Settings2 },
-    { href: "/admin/oauth", label: "第三方登录", icon: KeyRound },
-    { href: "/admin/updates", label: "版本更新", icon: Download },
-  ];
   const pathname = usePathname();
+  const current = adminNavigation
+    .flatMap((group) => group.links)
+    .find((link) => isAdminNavActive(pathname, link.href));
   return (
-    <nav className="admin-tabs" aria-label="后台导航">
-      {links.map(({ href, label, icon: Icon }) => {
-        const active =
-          href === "/admin" ? pathname === href : pathname.startsWith(href);
-        return (
-          <Link
-            href={href}
-            key={href}
-            aria-current={active ? "page" : undefined}
-            className={"nav-link " + (active ? "active" : "")}
-          >
-            <Icon size={16} />
-            {label}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="admin-mobile-navigation">
+      <Dropdown>
+        <Dropdown.Trigger
+          className="admin-page-switch"
+          aria-label="切换管理页面"
+        >
+          {current?.label || "管理后台"}
+          <ChevronDown size={15} />
+        </Dropdown.Trigger>
+        <Dropdown.Popover placement="bottom start">
+          <Dropdown.Menu aria-label="后台导航">
+            {adminNavigation
+              .flatMap((group) => group.links)
+              .map(({ href, label, icon: Icon }) => (
+                <Dropdown.Item
+                  id={href}
+                  key={href}
+                  href={href}
+                  textValue={label}
+                  aria-current={
+                    isAdminNavActive(pathname, href) ? "page" : undefined
+                  }
+                >
+                  <Icon size={16} />
+                  {label}
+                </Dropdown.Item>
+              ))}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown>
+    </div>
   );
 }

@@ -1,4 +1,3 @@
-import { AdminNav } from "@/components/admin-nav";
 import { OAuthSettingsForm } from "@/components/oauth-settings-form";
 import { PageHeading } from "@/components/page-heading";
 import { Notice } from "@/components/ui";
@@ -19,11 +18,9 @@ export default async function OAuthSettingsPage() {
   return (
     <main className="page-shell">
       <PageHeading
-        eyebrow="Login settings"
         title="第三方登录"
         description="填写各平台的 OAuth 应用信息并启用后，登录页对应按钮才可使用。"
       />
-      <AdminNav />
       {!hasEncryptionKey(process.env.OAUTH_ENCRYPTION_KEY) ? (
         <div className="mb-5">
           <Notice tone="warning">

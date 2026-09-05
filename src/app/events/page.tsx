@@ -51,9 +51,8 @@ export default async function EventsPage({
   return (
     <main className="page-shell">
       <PageHeading
-        eyebrow="SJTU / 社区活动"
-        title="课余时间，一起上场。"
-        description="校内内战、娱乐赛、训练赛和观赛。看看最近的安排，约上交大队友一起参加。"
+        title="社区活动"
+        description="查看活动安排、报名状态与往期记录。日期均为上海时间。"
         action={
           <Chip variant="secondary">
             <CalendarDays size={14} />
