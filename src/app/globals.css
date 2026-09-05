@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@heroui/styles";
+@import "./community.css";
 @layer base {
   :root {
     color-scheme: light;
@@ -193,96 +194,6 @@
     margin-top: auto;
     padding-top: 30px;
   }
-  .sidebar-invite {
-    padding: 19px 16px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: linear-gradient(135deg, #f4f5ef, #fff);
-  }
-  .sidebar-invite > svg {
-    color: var(--accent);
-  }
-  .sidebar-invite p {
-    margin-top: 15px;
-    font-size: 15px;
-    line-height: 1.7;
-    font-weight: 650;
-  }
-  .sidebar-invite a {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 18px;
-    font-size: 10px;
-    color: var(--muted);
-  }
-  .sidebar-footnote {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 18px 4px 0;
-    font-size: 9px;
-    color: var(--muted);
-  }
-  .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 40;
-    margin-left: var(--sidebar-width);
-    border-bottom: 1px solid var(--border);
-    background: rgb(245 245 242 / 0.94);
-    backdrop-filter: blur(18px);
-  }
-  .nav-shell {
-    width: min(100% - 72px, 1280px);
-    min-height: 76px;
-    margin: auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-  }
-  .header-context {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .header-context strong {
-    font-weight: 550;
-    color: var(--foreground);
-  }
-  .nav-account {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-left: auto;
-  }
-  .account-link {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 12px;
-  }
-  .account-link > span:last-child:not(:first-child) {
-    max-width: 110px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .header-admin-link {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    margin-right: 14px;
-    font-size: 11px;
-    color: var(--muted);
-  }
-  .mobile-brand,
-  .mobile-nav {
-    display: none;
-  }
   .page-shell {
     width: min(100% - 72px, 1280px);
     margin-inline: auto;
@@ -335,125 +246,10 @@
   .section-heading .eyebrow {
     margin-bottom: 7px;
   }
-  .home-intro {
-    display: flex;
-    justify-content: space-between;
-    gap: 14px;
-    align-items: center;
-    margin-bottom: 22px;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .home-intro strong {
-    color: var(--foreground);
-    font-weight: 600;
-  }
-  .home-lead-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.8fr) minmax(270px, 1fr);
-    gap: 20px;
-  }
-  .hero-panel {
-    position: relative;
-    overflow: hidden;
-    min-height: 355px;
-    border-radius: 18px;
-    color: white;
-    background: #20282c;
-  }
-  .hero-panel::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(90deg, #162023eb 0%, #162023ae 46%, #1620230a 100%),
-      var(--hero-image) center / cover;
-  }
-  .hero-content {
-    position: relative;
-    z-index: 1;
-    padding: 35px;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    min-height: 100%;
-  }
-  .hero-kicker {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 9px;
-    color: #ffffffb0;
-    letter-spacing: 0.14em;
-  }
-  .hero-title {
-    margin-top: 26px;
-    font-size: clamp(2.5rem, 4.2vw, 4rem);
-    font-weight: 780;
-    letter-spacing: -0.065em;
-    line-height: 1.16;
-  }
-  .hero-caption {
-    position: absolute;
-    right: 20px;
-    bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 8px;
-    letter-spacing: 0.1em;
-    color: #ffffff70;
-  }
-  .spotlight-card {
-    padding: 26px;
-    gap: 0;
-    border: 1px solid var(--border);
-    box-shadow: none;
-    display: flex;
-    min-width: 0;
-  }
-  .spotlight-label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    color: var(--muted);
-    font-size: 10px;
-    letter-spacing: 0.03em;
-  }
-  .spotlight-date {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding-block: 21px 17px;
-  }
-  .spotlight-date strong {
-    font-size: 52px;
-    line-height: 1;
-    letter-spacing: -0.08em;
-    font-weight: 650;
-  }
-  .spotlight-date span {
-    font-size: 11px;
-    line-height: 1.9;
-    color: var(--muted);
-  }
-  .home-body-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 285px;
-    gap: 28px;
-    align-items: start;
-  }
   .event-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 18px;
-  }
-  .home-event-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .home-event-grid .event-card:only-child {
-    grid-column: 1 / -1;
   }
   .event-card {
     height: 100%;
@@ -548,38 +344,6 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-  }
-  .guide-card {
-    border: 1px solid var(--border);
-    padding: 23px;
-    box-shadow: none;
-    gap: 22px;
-  }
-  .guide-steps {
-    display: grid;
-    gap: 22px;
-  }
-  .guide-step {
-    display: grid;
-    grid-template-columns: 24px 1fr;
-    gap: 10px;
-  }
-  .guide-step > span {
-    font-size: 10px;
-    color: var(--accent);
-    padding-top: 2px;
-    font-family: monospace;
-  }
-  .guide-step strong {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .guide-step p {
-    font-size: 11px;
-    color: var(--muted);
-    line-height: 1.8;
-    margin-top: 5px;
   }
   .player-grid {
     display: grid;
@@ -776,20 +540,6 @@
     justify-content: center;
     box-shadow: none;
   }
-  .footer-shell {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    width: min(100% - 72px, 1280px);
-    margin: auto;
-    padding-block: 24px;
-    border-top: 1px solid var(--border);
-    color: var(--muted);
-    font-size: 10px;
-    line-height: 1.7;
-  }
   .admin-tabs {
     display: none;
   }
@@ -806,9 +556,6 @@
   .site-sidebar {
     padding-inline: 23px;
   }
-  .hero-panel {
-    min-height: 390px;
-  }
 }
 @media (max-width: 1200px) {
   :root {
@@ -817,29 +564,11 @@
   .site-sidebar {
     padding-inline: 12px;
   }
-  .nav-shell,
-  .page-shell,
-  .footer-shell {
+  .page-shell {
     width: calc(100% - 44px);
   }
   .event-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .home-body-grid {
-    grid-template-columns: minmax(0, 1fr) 245px;
-    gap: 20px;
-  }
-  .home-lead-grid {
-    grid-template-columns: minmax(0, 1.5fr) minmax(255px, 1fr);
-  }
-  .hero-content {
-    padding: 28px;
-  }
-  .hero-title {
-    font-size: 42px;
-  }
-  .home-event-grid {
-    grid-template-columns: 1fr;
   }
   .detail-layout {
     grid-template-columns: minmax(0, 1fr) 290px;
@@ -861,33 +590,8 @@
   :root {
     --sidebar-width: 0px;
   }
-  .site-sidebar,
-  .header-context {
+  .site-sidebar {
     display: none;
-  }
-  .site-header {
-    margin-left: 0;
-  }
-  .mobile-brand {
-    display: block;
-    max-width: 230px;
-    min-width: 0;
-  }
-  .nav-shell {
-    min-height: 70px;
-  }
-  .mobile-nav {
-    display: flex;
-    width: calc(100% - 44px);
-    gap: 8px;
-    margin: 0 auto;
-    padding-bottom: 12px;
-  }
-  .mobile-nav .nav-link {
-    flex: 1;
-    justify-content: center;
-    padding: 9px;
-    font-size: 12px;
   }
   .admin-tabs {
     display: flex;
@@ -906,17 +610,11 @@
   }
 }
 @media (max-width: 700px) {
-  .nav-shell,
-  .page-shell,
-  .footer-shell {
+  .page-shell {
     width: calc(100% - 32px);
   }
   .page-shell {
     padding-block: 24px 36px;
-  }
-  .nav-shell {
-    gap: 8px;
-    min-height: 65px;
   }
   .brand strong {
     font-size: 14px;
@@ -929,71 +627,9 @@
     height: 34px;
     border-radius: 10px;
   }
-  .mobile-brand {
-    max-width: 190px;
-  }
-  .account-link > span:last-child:not(:first-child) {
-    display: none;
-  }
-  .nav-account {
-    gap: 1px;
-  }
-  .header-admin-link {
-    font-size: 10px;
-    margin-right: 7px;
-    gap: 2px;
-  }
-  .header-admin-link svg {
-    display: none;
-  }
-  .mobile-nav {
-    width: calc(100% - 24px);
-    gap: 3px;
-    padding-bottom: 8px;
-  }
-  .mobile-nav .nav-link {
-    font-size: 11px;
-    gap: 6px;
-    padding: 9px 5px;
-  }
-  .home-intro {
-    font-size: 11px;
-  }
-  .home-intro time {
-    font-size: 10px;
-  }
-  .home-lead-grid,
-  .home-body-grid,
   .detail-layout,
   .profile-layout {
     grid-template-columns: 1fr;
-  }
-  .hero-content {
-    padding: 27px;
-  }
-  .hero-panel {
-    min-height: 335px;
-  }
-  .hero-title {
-    font-size: 45px;
-  }
-  .hero-caption {
-    display: none;
-  }
-  .spotlight-card {
-    padding: 22px;
-  }
-  .spotlight-date {
-    padding-block: 17px 12px;
-  }
-  .spotlight-date strong {
-    font-size: 42px;
-  }
-  .home-body-grid {
-    gap: 0;
-  }
-  .home-event-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .event-grid,
   .player-grid {
@@ -1066,19 +702,9 @@
   }
 }
 @media (max-width: 430px) {
-  .home-event-grid .event-card:only-child {
-    display: flex;
-  }
   .event-grid,
-  .home-event-grid,
   .player-grid {
     grid-template-columns: 1fr;
-  }
-  .mobile-brand {
-    max-width: 155px;
-  }
-  .header-admin-link {
-    margin-right: 3px;
   }
   .brand {
     gap: 7px;
@@ -1088,12 +714,6 @@
   }
   .brand small {
     font-size: 5.5px;
-  }
-  .hero-title {
-    font-size: 39px;
-  }
-  .hero-content {
-    padding: 24px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

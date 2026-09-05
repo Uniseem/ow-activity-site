@@ -3,7 +3,7 @@ import { SiteNav } from "@/components/site-nav";
 import { AdminUpdateNotifier } from "@/components/admin-update-notifier";
 import { hashToken } from "@/lib/oauth/security";
 
-export async function Header() {
+export async function Header({ children }: { children: React.ReactNode }) {
   const session = await getCurrentSession();
   const user = session?.user;
   const isAdmin = user?.role === "ADMIN" && user.status === "APPROVED";
@@ -19,7 +19,9 @@ export async function Header() {
               }
             : null
         }
-      />
+      >
+        {children}
+      </SiteNav>
       {isAdmin && session ? (
         <AdminUpdateNotifier
           sessionKey={hashToken(`update-notice:${session.id}`)}

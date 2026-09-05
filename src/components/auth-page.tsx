@@ -22,13 +22,13 @@ export async function AuthPage({
         <span className="icon-tile">
           <Crosshair size={24} />
         </span>
-        <p className="eyebrow mt-6">Find your team</p>
+        <p className="eyebrow mt-6">{t("brand.name")}</p>
         <h1>
           {isLogin ? (
             <>
               欢迎回来，
               <br />
-              你的队友在这里。
+              交大队友在这里。
             </>
           ) : (
             <>
@@ -39,7 +39,7 @@ export async function AuthPage({
           )}
         </h1>
         <p className="max-w-sm text-sm leading-7 text-muted">
-          从周末内战到随心开黑，找到合拍的队友，一起享受守望先锋。
+          从课后开黑到周末内战，在交大找到一起玩守望先锋的朋友。
         </p>
         <div className="auth-benefits mt-8 grid gap-5 text-sm">
           {[
@@ -76,7 +76,7 @@ export async function AuthPage({
           </h2>
           <p className="mt-2 text-sm text-muted">
             {isLogin
-              ? "继续你的社区活动之旅。"
+              ? "查看报名结果，准备下一场活动。"
               : "创建账号，完善资料后即可等待审核。"}
           </p>
         </div>

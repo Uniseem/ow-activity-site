@@ -11,7 +11,7 @@ import { validateSiteAsset, MAX_SITE_ASSET_BYTES } from "../src/lib/site-asset";
 
 test("defaults render existing copy and overrides stay scoped to one UI location", () => {
   const defaults = validateSiteConfiguration({});
-  assert.equal(createSiteText(defaults)("brand.name"), "先锋活动站");
+  assert.equal(createSiteText(defaults)("brand.name"), "上海交大守望先锋");
   const custom = validateSiteConfiguration({
     texts: { "home.title1": "周末集结", "brand.name": "测试社区" },
   });
@@ -41,7 +41,8 @@ test("empty optional copy stays empty, required labels cannot disappear, default
     validateSiteConfiguration({ texts: { "brand.name": "站".repeat(41) } }),
   );
   assert.deepEqual(
-    validateSiteConfiguration({ texts: { "brand.name": "先锋活动站" } }).texts,
+    validateSiteConfiguration({ texts: { "brand.name": "上海交大守望先锋" } })
+      .texts,
     {},
   );
   assert.throws(() =>

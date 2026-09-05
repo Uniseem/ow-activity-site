@@ -30,9 +30,9 @@ export default async function PlayersPage({
   return (
     <main className="page-shell">
       <PageHeading
-        eyebrow="社区成员"
-        title="好队友，从认识开始。"
-        description="有人擅长冲锋，有人守护后排。看看大家的玩家卡片，找到合拍的那一位。"
+        eyebrow="SJTU / 交大玩家"
+        title="同一个校园，同一份热爱。"
+        description="在交大找到一起玩守望的队友。看看大家的常用英雄和开黑宣言，从认识开始，慢慢打出默契。"
         action={
           <Chip variant="secondary">
             <Users size={14} />
@@ -77,7 +77,7 @@ export default async function PlayersPage({
       </div>
       <p className="directory-count">
         {q ? `“${q}” · ` : ""}
-        {profiles.length} 位玩家 · 仅展示已通过审核的公开资料
+        {profiles.length} 位社区玩家
       </p>
       {profiles.length ? (
         <div className="player-grid">

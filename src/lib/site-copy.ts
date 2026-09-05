@@ -10,7 +10,7 @@ export const copyFields: CopyField[] = [
     key: "brand.name",
     group: "品牌信息",
     label: "站点名称",
-    defaultValue: "先锋活动站",
+    defaultValue: "上海交大守望先锋",
     required: true,
   },
   {
@@ -24,35 +24,36 @@ export const copyFields: CopyField[] = [
     key: "brand.subtitle",
     group: "品牌信息",
     label: "英文副标题",
-    defaultValue: "OVERWATCH COMMUNITY",
+    defaultValue: "SJTU OVERWATCH COMMUNITY",
     required: false,
   },
   {
     key: "brand.metaDescription",
     group: "品牌信息",
     label: "站点简介",
-    defaultValue: "非官方玩家活动报名与资料审核平台",
+    defaultValue:
+      "上海交大守望先锋玩家社区。参加校内内战、娱乐赛、训练赛与观赛活动，认识一起开黑的交大队友。",
     required: false,
   },
   {
     key: "home.eyebrow",
     group: "首页介绍",
     label: "首页顶部标语",
-    defaultValue: "SJTU · OVERWATCH COMMUNITY",
+    defaultValue: "上海交大 · 守望先锋玩家社区",
     required: false,
   },
   {
     key: "home.title1",
     group: "首页介绍",
     label: "首页主标题（第一行）",
-    defaultValue: "今晚，",
+    defaultValue: "交大集结，",
     required: true,
   },
   {
     key: "home.title2",
     group: "首页介绍",
     label: "首页主标题（第二行）",
-    defaultValue: "一起开一局。",
+    defaultValue: "一起守望。",
     required: false,
   },
   {
@@ -60,14 +61,14 @@ export const copyFields: CopyField[] = [
     group: "首页介绍",
     label: "首页介绍文字",
     defaultValue:
-      "找到合拍的队友，加入期待已久的内战。\n让每一次集结，都值得期待。",
+      "从课后的开黑，到周末的内战与观赛。\n在这里，找到一起玩守望先锋的交大队友。",
     required: false,
   },
   {
     key: "footer.text",
     group: "页脚信息",
     label: "页脚标语",
-    defaultValue: "先锋活动站 · 为每一次集结",
+    defaultValue: "上海交大守望先锋玩家社区",
     required: false,
   },
   {

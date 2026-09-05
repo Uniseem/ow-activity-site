@@ -28,19 +28,11 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const { configuration } = await getSiteSettings();
-  const t = createSiteText(configuration);
   return (
     <html lang="zh-CN" className="light" style={siteThemeStyle(configuration)}>
       <body>
         <SiteContentProvider configuration={configuration}>
-          <Header />
-          <div className="site-workspace" id="page-content" tabIndex={-1}>
-            {children}
-            <footer className="footer-shell">
-              <span>{t("footer.text")}</span>
-              <span>{t("footer.note")}</span>
-            </footer>
-          </div>
+          <Header>{children}</Header>
         </SiteContentProvider>
       </body>
     </html>
