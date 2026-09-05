@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { usesD1 } from "@/lib/database-provider";
 import {
   articleExcerpt,
   articleInputSchema,
@@ -36,18 +37,30 @@ export async function saveArticle(
     content: data.content,
   };
   if (revision === 0) {
-    const result = await db.article.createMany({
-      data: [
-        {
-          id,
-          ...data,
-          authorId: actor.id,
-          updatedAt: now,
-          publishedAt: data.status === "PUBLISHED" ? now : null,
-        },
-      ],
-      skipDuplicates: true,
-    });
+    const result = await db.article
+      .createMany({
+        data: [
+          {
+            id,
+            ...data,
+            authorId: actor.id,
+            updatedAt: now,
+            publishedAt: data.status === "PUBLISHED" ? now : null,
+          },
+        ],
+        ...(usesD1(db) ? {} : { skipDuplicates: true }),
+      })
+      .catch((error: unknown) => {
+        if (
+          usesD1(db) &&
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          error.code === "P2002"
+        )
+          return { count: 0 };
+        throw error;
+      });
     if (!result.count) throw new ArticleConflictError();
     return {
       revision: 1,

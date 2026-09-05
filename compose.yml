@@ -1,0 +1,97 @@
+name: ${COMPOSE_PROJECT_NAME:-ow-activity-site}
+
+x-database-environment: &database-environment
+  DATABASE_PROVIDER: postgresql
+  DATABASE_URL: postgresql://${POSTGRES_USER:-ow_activity}:${POSTGRES_PASSWORD:?请先运行安装脚本或填写 .env 中的 POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-ow_activity}?schema=public
+  DATABASE_URL_UNPOOLED: postgresql://${POSTGRES_USER:-ow_activity}:${POSTGRES_PASSWORD:?请先填写 POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-ow_activity}?schema=public
+
+services:
+  db:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ow_activity}
+      POSTGRES_USER: ${POSTGRES_USER:-ow_activity}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请先填写 POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    stop_grace_period: 30s
+
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment: *database-environment
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?请填写完整的 https 站点网址}
+        APP_GIT_COMMIT_SHA: ${APP_GIT_COMMIT_SHA:-}
+    restart: unless-stopped
+    init: true
+    environment:
+      <<: *database-environment
+      SITE_URL: ${NEXT_PUBLIC_SITE_URL:?请填写完整的 https 站点网址}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?请填写完整的 https 站点网址}
+      OAUTH_ENCRYPTION_KEY: ${OAUTH_ENCRYPTION_KEY:?请生成并保存 OAuth 加密密钥}
+      CRON_SECRET: ${CRON_SECRET:?请生成定时任务密钥}
+      TZ: Asia/Shanghai
+    # Only the reverse proxy is public. Existing Nginx/Caddy may also use this port.
+    ports:
+      - "127.0.0.1:${APP_PORT:-3100}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    stop_grace_period: 30s
+
+  scheduler:
+    image: node:22-bookworm-slim
+    restart: unless-stopped
+    init: true
+    user: node
+    read_only: true
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?请生成定时任务密钥}
+    volumes:
+      - ./deploy/scheduler.mjs:/scheduler.mjs:ro
+    command: [node, /scheduler.mjs]
+    depends_on:
+      app:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: [https]
+    restart: unless-stopped
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

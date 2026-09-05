@@ -18,6 +18,12 @@ import { assertDatabaseConfigured, prisma } from "@/lib/prisma";
 import { parseEventInput } from "@/lib/event-input";
 import { eventStatusLabels } from "@/lib/format";
 import { syncEventStatuses } from "@/lib/event-schedule";
+import { isD1Database } from "@/lib/database-provider";
+import {
+  createD1User,
+  reviewD1Profile,
+  reviewD1Registration,
+} from "@/lib/d1-atomic";
 
 export type FormState = {
   message: string;
@@ -93,23 +99,25 @@ export async function registerAction(
 
     const passwordHash = await bcrypt.hash(parsed.data.password, 12);
 
-    const user = await prisma.user.create({
-      data: {
-        username: parsed.data.username,
-        passwordHash,
-        profile: {
-          create: {
-            displayName: parsed.data.displayName,
-            slogan: parsed.data.slogan,
-            reviewStatus: "PENDING",
+    const user = isD1Database()
+      ? await createD1User({ ...parsed.data, passwordHash })
+      : await prisma.user.create({
+          data: {
+            username: parsed.data.username,
+            passwordHash,
+            profile: {
+              create: {
+                displayName: parsed.data.displayName,
+                slogan: parsed.data.slogan,
+                reviewStatus: "PENDING",
+              },
+            },
           },
-        },
-      },
-    });
+        });
 
     await createSession(user.id);
   } catch (error) {
-    if (error instanceof Error && error.message.includes("Unique constraint")) {
+    if (error instanceof Error && /unique constraint/i.test(error.message)) {
       return { message: "这个用户名已经被注册。" };
     }
 
@@ -330,23 +338,26 @@ export async function reviewProfileAction(
   const userStatus = approved ? ("APPROVED" as const) : ("REJECTED" as const);
 
   try {
-    await prisma.$transaction(async (tx) => {
-      const profile = await tx.profile.update({
-        where: { id: profileId },
-        data: {
-          reviewStatus: profileStatus,
-          reviewNote: note || null,
-          reviewedById: admin.id,
-          reviewedAt: new Date(),
-        },
-        select: { userId: true },
-      });
+    if (isD1Database()) {
+      await reviewD1Profile(profileId, profileStatus, note || null, admin.id);
+    } else
+      await prisma.$transaction(async (tx) => {
+        const profile = await tx.profile.update({
+          where: { id: profileId },
+          data: {
+            reviewStatus: profileStatus,
+            reviewNote: note || null,
+            reviewedById: admin.id,
+            reviewedAt: new Date(),
+          },
+          select: { userId: true },
+        });
 
-      await tx.user.update({
-        where: { id: profile.userId },
-        data: { status: userStatus },
+        await tx.user.update({
+          where: { id: profile.userId },
+          data: { status: userStatus },
+        });
       });
-    });
   } catch {
     return {
       ok: false,
@@ -628,33 +639,40 @@ export async function reviewRegistrationAction(formData: FormData) {
   )
     redirect("/admin/events");
 
-  const result = await prisma.$transaction(async (tx) => {
-    // 同一活动串行审核，避免多人同时通过报名时超出人数上限。
-    await tx.$queryRaw`SELECT "id" FROM "Event" WHERE "id" = ${eventId} FOR UPDATE`;
-    const registration = await tx.eventRegistration.findFirst({
-      where: { id: registrationId, eventId, status: { not: "CANCELLED" } },
-    });
-    if (!registration) return "registration";
-    if (decision === "APPROVED" && registration.status !== "APPROVED") {
-      const event = await tx.event.findUnique({
-        where: { id: eventId },
-        select: { maxParticipants: true },
+  const result = isD1Database()
+    ? await reviewD1Registration(
+        registrationId,
+        eventId,
+        decision as "APPROVED" | "REJECTED",
+        admin.id,
+      )
+    : await prisma.$transaction(async (tx) => {
+        // 同一活动串行审核，避免多人同时通过报名时超出人数上限。
+        await tx.$queryRaw`SELECT "id" FROM "Event" WHERE "id" = ${eventId} FOR UPDATE`;
+        const registration = await tx.eventRegistration.findFirst({
+          where: { id: registrationId, eventId, status: { not: "CANCELLED" } },
+        });
+        if (!registration) return "registration";
+        if (decision === "APPROVED" && registration.status !== "APPROVED") {
+          const event = await tx.event.findUnique({
+            where: { id: eventId },
+            select: { maxParticipants: true },
+          });
+          const approvedCount = await tx.eventRegistration.count({
+            where: { eventId, status: "APPROVED" },
+          });
+          if (!event || approvedCount >= event.maxParticipants) return "full";
+        }
+        const saved = await tx.eventRegistration.updateMany({
+          where: { id: registrationId, eventId, status: { not: "CANCELLED" } },
+          data: {
+            status: decision as "APPROVED" | "REJECTED",
+            reviewedById: admin.id,
+            reviewedAt: new Date(),
+          },
+        });
+        return saved.count ? "saved" : "registration";
       });
-      const approvedCount = await tx.eventRegistration.count({
-        where: { eventId, status: "APPROVED" },
-      });
-      if (!event || approvedCount >= event.maxParticipants) return "full";
-    }
-    const saved = await tx.eventRegistration.updateMany({
-      where: { id: registrationId, eventId, status: { not: "CANCELLED" } },
-      data: {
-        status: decision as "APPROVED" | "REJECTED",
-        reviewedById: admin.id,
-        reviewedAt: new Date(),
-      },
-    });
-    return saved.count ? "saved" : "registration";
-  });
 
   revalidatePath("/");
   revalidatePath("/events");

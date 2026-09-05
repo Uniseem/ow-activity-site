@@ -1,5 +1,7 @@
 import bcrypt from "bcryptjs";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { usesD1 } from "@/lib/database-provider";
+import { createD1User } from "@/lib/d1-atomic";
 import {
   initialAdminSchema,
   type InitialAdminInput,
@@ -32,6 +34,21 @@ export async function registerInitialAdmin(
   const data = initialAdminSchema.parse(input);
   if (!(await canSetUpAdmin(db))) throw new AdminSetupClosedError();
   const passwordHash = await bcrypt.hash(data.password, 12);
+
+  if (usesD1(db)) {
+    try {
+      return await createD1User({
+        ...data,
+        passwordHash,
+        slogan: "一起组织下一场活动。",
+        initialAdmin: true,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("CHECK constraint"))
+        throw new AdminSetupClosedError();
+      throw error;
+    }
+  }
 
   return db.$transaction(async (tx) => {
     // 原子更新会锁住唯一的初始化记录，并发提交只能有一个成功。

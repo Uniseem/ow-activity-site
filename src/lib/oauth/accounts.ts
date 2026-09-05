@@ -3,6 +3,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import type { OAuthIdentity } from "./providers";
 import { hashToken, type OAuthFlow } from "./security";
 import type { OAuthProvider } from "./shared";
+import { usesD1 } from "@/lib/database-provider";
+import { finishD1OAuthAccount } from "./d1-accounts";
 
 export class OAuthError extends Error {
   constructor(
@@ -28,6 +30,8 @@ export async function finishOAuthAccount(
   identity: OAuthIdentity,
   linkUserId: string | null = null,
 ) {
+  if (usesD1(db))
+    return finishD1OAuthAccount(provider, revision, identity, linkUserId);
   return db.$transaction(async (tx) => {
     // 与后台配置更新共用数据库行锁；停用或更换配置后，旧授权不能继续登录。
     const active = await tx.$queryRaw<

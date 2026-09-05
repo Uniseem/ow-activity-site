@@ -6,6 +6,7 @@ import { oauthProviders, type OAuthProvider } from "./shared";
 
 export function oauthOrigin(localOrigin?: string) {
   const configured =
+    process.env.SITE_URL ||
     process.env.NEXT_PUBLIC_SITE_URL ||
     (process.env.VERCEL_ENV === "production" &&
     process.env.VERCEL_PROJECT_PRODUCTION_URL

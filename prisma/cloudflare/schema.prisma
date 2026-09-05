@@ -1,10 +1,11 @@
 generator client {
   provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  output   = "../../src/generated/prisma-d1"
+  runtime = "cloudflare"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 enum UserRole {
@@ -111,7 +112,7 @@ model Profile {
   slogan         String
   battleTag      String?
   mainRole       PlayerRole?
-  mainHeroes     String[]            @default([])
+  mainHeroes     Json                @default("[]")
   rank           String?
   onlineTime     String?
   contact        String?
@@ -222,7 +223,7 @@ model EventRegistration {
   userId         String
   user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   preferredRole  PlayerRole?
-  heroes         String[]           @default([])
+  heroes         Json               @default("[]")
   voiceAvailable Boolean            @default(false)
   note           String?
   status         RegistrationStatus @default(PENDING)
@@ -249,6 +250,8 @@ model SiteAsset {
   id           String   @id @default(cuid())
   name         String
   mimeType     String
+  storageKey   String?
+  byteSize     Int      @default(0)
   data         Bytes
   uploadedById String
   createdAt    DateTime @default(now())
@@ -277,3 +280,5 @@ model BackupChunk {
 
   @@unique([transferId, index])
 }
+
+

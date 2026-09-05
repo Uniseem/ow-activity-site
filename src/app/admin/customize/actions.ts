@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { validateSiteConfiguration } from "@/lib/site-config";
 import { validateSiteAsset } from "@/lib/site-asset";
 import { Prisma } from "@/generated/prisma/client";
+import { storeSiteAsset } from "@/lib/asset-storage";
 
 export type SaveSiteResult = {
   ok: boolean;
@@ -98,14 +99,11 @@ export async function uploadSiteAssetAction(
   if (!(file instanceof File)) return { error: "请选择图片。" };
   try {
     const data = await validateSiteAsset(file);
-    const asset = await prisma.siteAsset.create({
-      data: {
-        data,
-        name: file.name.slice(0, 200),
-        mimeType: file.type,
-        uploadedById: admin.id,
-      },
-      select: { id: true },
+    const asset = await storeSiteAsset({
+      data,
+      name: file.name.slice(0, 200),
+      mimeType: file.type,
+      uploadedById: admin.id,
     });
     return { url: "/api/site-assets/" + asset.id };
   } catch (error) {

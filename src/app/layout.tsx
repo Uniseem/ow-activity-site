@@ -14,6 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = createSiteText(configuration);
   return {
     metadataBase: new URL(
+      process.env.SITE_URL ||
       process.env.NEXT_PUBLIC_SITE_URL ||
         (vercelHostname
           ? "https://" + vercelHostname

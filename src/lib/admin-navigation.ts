@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  DatabaseBackup,
   FilePenLine,
   KeyRound,
   LayoutDashboard,
@@ -24,6 +25,7 @@ export const adminNavigation = [
       { href: "/admin/customize", label: "基本设置", icon: Settings2 },
       { href: "/admin/oauth", label: "第三方登录", icon: KeyRound },
       { href: "/admin/updates", label: "版本更新", icon: RefreshCw },
+      { href: "/admin/backup", label: "备份与恢复", icon: DatabaseBackup },
     ],
   },
 ];

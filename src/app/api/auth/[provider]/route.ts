@@ -17,6 +17,7 @@ import {
   oauthOrigin,
 } from "@/lib/oauth/server";
 import { isOAuthProvider } from "@/lib/oauth/shared";
+import { matchesSiteRequest } from "@/lib/oauth/request-origin";
 
 export const dynamic = "force-dynamic";
 export async function POST(
@@ -29,7 +30,7 @@ export async function POST(
   const origin = oauthOrigin(request.url);
   if (
     request.headers.get("origin") !== origin ||
-    request.nextUrl.origin !== origin
+    !matchesSiteRequest(request, origin)
   )
     return new Response("Forbidden", { status: 403 });
   const fail = (code: string) =>

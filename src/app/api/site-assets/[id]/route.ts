@@ -1,4 +1,5 @@
-import { isDatabaseConfigured, prisma } from "@/lib/prisma";
+import { isDatabaseConfigured } from "@/lib/prisma";
+import { readSiteAsset } from "@/lib/asset-storage";
 export const runtime = "nodejs";
 export async function GET(
   _request: Request,
@@ -7,10 +8,7 @@ export async function GET(
   const { id } = await params;
   if (!/^[a-z0-9]{20,40}$/.test(id) || !isDatabaseConfigured())
     return new Response(null, { status: 404 });
-  const asset = await prisma.siteAsset.findUnique({
-    where: { id },
-    select: { data: true, mimeType: true },
-  });
+  const asset = await readSiteAsset(id);
   if (!asset) return new Response(null, { status: 404 });
   return new Response(new Uint8Array(asset.data), {
     headers: {

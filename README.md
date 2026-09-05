@@ -1,21 +1,40 @@
 # 上海交大守望先锋社区
 
-面向守望先锋校园玩家的非官方社区活动站，统一使用 Next.js + React 全栈架构，部署到 Vercel。数据库使用在 Vercel Storage 中创建和管理的 Neon Postgres。
+> 当前分支为开发交接快照，新增多平台部署与整站备份尚未完成验收。已完成内容、已知问题和后续步骤见 [开发交接文档](./docs/开发交接-2026-09-06.md)。
+
+面向守望先锋校园玩家的非官方社区活动站，使用 Next.js + React 全栈架构。可部署到 Vercel、全部使用 Cloudflare 资源，或在自己的 VPS 上运行。
+
+## 选择部署方式
+
+| 方式 | 网站与数据库 | 部署说明 |
+| --- | --- | --- |
+| Vercel | Vercel Functions + Vercel Marketplace 中的 Neon Postgres | [Vercel 部署](./VERCEL.md) |
+| 全 Cloudflare | Workers + D1 数据库 + R2 图片及缓存 + Workers 静态资源 | [Cloudflare 部署](./docs/Cloudflare部署.md) |
+| VPS 一行命令 | 自动配置 Docker Compose、PostgreSQL 和 Caddy HTTPS | [VPS 一键部署](./docs/VPS部署.md#一行安装) |
+| VPS Docker Compose | 自己填写配置并管理容器，数据使用持久卷 | [Docker Compose 部署](./docs/VPS部署.md#直接使用-docker-compose) |
+
+已安装 Docker Engine、Compose v2、git、curl 和 openssl 的 Linux VPS，可将域名解析到服务器后执行（替换示例域名）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Uniseem/ow-activity-site/main/scripts/install.sh | bash -s -- --domain ow.example.com
+```
+
+首次部署后进入 `/admin/setup` 注册首位管理员。迁移已有网站时，进入后台「备份与恢复」导入旧站导出的 ZIP，账号、密码、内容和设置会覆盖为备份中的数据。详见 [备份与恢复](./docs/备份与恢复.md)。
 
 ## 架构
 
 ```text
 浏览器 → Next.js App Router / React
        → Server Components 读取数据、Server Actions 处理表单
-       → Prisma 7 + pg 连接池
-       → Neon Postgres（Vercel Marketplace）
+       → Prisma 7
+       → PostgreSQL（Vercel / VPS）或 D1（Cloudflare）
 ```
 
 - Next.js 16、React 19、TypeScript、Tailwind CSS 4、HeroUI 3。
 - 页面、登录会话、权限校验、资料与报名审核都运行在同一个 Next.js 项目中。
-- 服务端使用 Node.js runtime，由 Vercel 托管；无需独立后端服务。
-- 运行时通过 `DATABASE_URL` 连接 Neon 连接池；迁移优先使用 `DATABASE_URL_UNPOOLED`。
-- Vercel Functions 通过 `attachDatabasePool` 管理空闲连接，开发环境复用 Prisma 客户端。
+- Vercel 和 VPS 使用 Node.js；Cloudflare 通过 OpenNext 运行于 Workers，无需独立后端项目。
+- PostgreSQL 运行时通过 `DATABASE_URL` 连接，迁移优先使用 `DATABASE_URL_UNPOOLED`；D1 使用 Worker 的 `DB` 绑定和独立 SQLite 迁移。
+- 上传图片在 PostgreSQL 部署中保存在数据库，在 Cloudflare 部署中使用 R2。
 - bcrypt 保存密码哈希，HttpOnly Cookie 保存随机会话令牌，数据库仅存令牌哈希；会话有效期 14 天。
 
 Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace 接入。这里采用 Vercel 管理的 Neon 集成，详见 [Vercel Postgres 文档](https://vercel.com/docs/postgres)。
@@ -40,6 +59,7 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 - 报名检查活动状态、截止时间和已通过人数，并限制重复报名。
 - 管理后台以待办为首页，活动、文章与用户采用列表进入具体操作；报名审核与活动设置分开，次要设置按需展开。
 - 社区文章：后台嵌入开源 Tiptap 富文本编辑器，支持 Markdown 源码、预览、导入导出、图片、表格，以及草稿、发布、撤回和删除；前台提供文章列表、搜索、分页和阅读页。
+- 整站备份与恢复：后台导出一个 ZIP；新站可导入并覆盖账号、密码哈希、第三方账号关联、文章、活动、报名、设置和上传图片，支持 PostgreSQL 与 D1 之间迁移。
 
 首页将近期活动和最新文章并排展示，每栏首条突出，其余条目紧凑排列，手机上转为单栏；下方“交大玩家”以横向卡片带展示查询到的最多 8 名玩家。卡片溢出时，进入视区约 1 秒后开始自动滚动，每次用 2 秒非线性缓动前进一张，停留约 0.8 秒后继续，到达两端后反向。支持左右按钮、键盘与原生触摸滚动；手动翻页、拖动或横向滚轮操作后会短暂停留并自动恢复，鼠标停留不阻止自动滚动。只有暂停按钮会持续暂停，点击播放可恢复；键盘焦点停留在轮播中、区域离屏、页面隐藏或系统启用“减少动态效果”时暂不自动滚动。
 
@@ -57,7 +77,7 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 - 主题：固定采用 HeroUI 官方默认配色，不再提供主色选择器。旧版颜色配置保留存储兼容，但不参与界面渲染。
 - 点击“保存设置”后生效，无需重新部署；支持撤销未保存修改和清除图片。多人同时编辑时会提示版本冲突，防止覆盖其他管理员的修改。
 
-配置存于 `SiteSettings`，图片存于 `SiteAsset`，通过 `/api/site-assets/[id]` 提供公开的只读图片。上传和修改均需要已通过审核的管理员权限。
+配置存于 `SiteSettings`，图片通过 `SiteAsset` 记录和 `/api/site-assets/[id]` 提供公开的只读访问；Cloudflare 将图片文件保存在 R2。上传和修改均需要已通过审核的管理员权限。
 
 `src/lib/site-copy.ts` 定义基础品牌文案，`src/lib/site-config.ts` 定义默认值与校验规则。功能按钮、表单提示和状态标签保持固定；活动及玩家数据在对应管理页面编辑。
 
@@ -118,11 +138,13 @@ Deploy Hook 只部署其绑定的仓库分支，不会自动合并上游仓库�
 
 | 变量                    | 用途                                                                                 |
 | ----------------------- | ------------------------------------------------------------------------------------ |
-| `DATABASE_URL`          | 应用运行时必需，使用 Neon 提供的 pooled PostgreSQL 连接地址                          |
+| `DATABASE_PROVIDER`     | 默认 `postgresql`；Cloudflare 使用 `d1` |
+| `DATABASE_URL`          | PostgreSQL 部署必需；Vercel 使用 Neon pooled 地址，VPS 使用自建 PostgreSQL |
 | `DATABASE_URL_UNPOOLED` | 迁移和初始化优先使用的直连地址；本地普通 PostgreSQL 可省略，回退到 `DATABASE_URL`    |
 | `ADMIN_USERNAME`        | 运行 `db:seed` 时的管理员用户名，默认 `admin`                                        |
 | `ADMIN_PASSWORD`        | 运行 `db:seed` 时必填，至少 8 字符、最多 72 字节、首尾无空白，无默认密码             |
-| `NEXT_PUBLIC_SITE_URL`  | 可选的完整网站地址；未设置时使用 Vercel 项目域名，本地回退到 `http://localhost:3000` |
+| `SITE_URL`              | 服务端运行时完整网站地址，优先于 `NEXT_PUBLIC_SITE_URL` |
+| `NEXT_PUBLIC_SITE_URL`  | 兼容原有站点地址配置；未设置时使用 Vercel 项目域名，本地回退到 `http://localhost:3000` |
 | `OAUTH_ENCRYPTION_KEY`  | OAuth 密钥与 Deploy Hook 的加密密钥，64 位随机十六进制字符；各项配置在后台填写       |
 | `APP_GIT_COMMIT_SHA`    | 可选，当前构建的完整 commit SHA；无 Git 元数据的 CLI 部署需显式传入                  |
 
@@ -143,6 +165,11 @@ Deploy Hook 只部署其绑定的仓库分支，不会自动合并上游仓库�
 | `npm run db:generate`                      | 重新生成 Prisma 客户端                         |
 | `npm run db:push`                          | 开发原型用，直接同步结构，不生成迁移历史       |
 | `npm run vercel-build`                     | 应用已有迁移，然后构建应用；由 Vercel 配置调用 |
+| `npm run cf:build`                         | 构建 Cloudflare Workers 版本 |
+| `npm run cf:preview`                       | 本地预览 Cloudflare 构建产物 |
+| `npm run cf:deploy`                        | 发布 Cloudflare Workers 版本 |
+| `npm run cf:db:local`                      | 应用本地 D1 迁移 |
+| `npm run cf:db:deploy`                     | 应用远端 D1 迁移 |
 
 新数据库从 `prisma/migrations/20260905000000_init` 初始化。后续使用 `db:migrate` 生成迁移文件，与代码一起保存。已有表但没有迁移历史的数据库需要先建立基线，见 [Vercel 部署说明](./VERCEL.md)。
 
@@ -154,16 +181,21 @@ Deploy Hook 只部署其绑定的仓库分支，不会自动合并上游仓库�
 src/app/               页面、布局与 Server Actions
 src/components/        React 组件
 src/lib/               会话、数据访问、格式化、头像和演示数据
-prisma/schema.prisma   数据模型
-prisma/migrations/     版本化 SQL 迁移
+prisma/schema.prisma   PostgreSQL 数据模型
+prisma/migrations/     PostgreSQL 版本化 SQL 迁移
+prisma/cloudflare/     D1 数据模型与迁移
 prisma/seed.ts         管理员初始化
 public/                静态资源
 env.config.ts          Prisma 和脚本的环境变量加载
 prisma.config.ts       Prisma CLI 配置
 vercel.json            Vercel 构建配置
+wrangler.jsonc         Cloudflare Workers、D1、R2 配置
+compose.yml            VPS 容器编排
+scripts/install.sh     VPS 一行安装与更新
+deploy/                VPS 配置模板、HTTPS 与定时任务
 ```
 
-完整部署步骤见 [VERCEL.md](./VERCEL.md)。
+完整部署步骤见 [Vercel](./VERCEL.md)、[Cloudflare](./docs/Cloudflare部署.md) 和 [VPS](./docs/VPS部署.md)；迁移网站见 [备份与恢复](./docs/备份与恢复.md)。
 
 ## 版权说明
 

@@ -21,6 +21,7 @@ import {
   oauthOrigin,
 } from "@/lib/oauth/server";
 import { isOAuthProvider } from "@/lib/oauth/shared";
+import { matchesSiteRequest } from "@/lib/oauth/request-origin";
 
 export const dynamic = "force-dynamic";
 export async function GET(
@@ -54,7 +55,7 @@ export async function GET(
       process.env.OAUTH_ENCRYPTION_KEY,
     );
     if (
-      request.nextUrl.origin !== origin ||
+      !matchesSiteRequest(request, origin) ||
       flow.callbackUrl !== origin + callbackPath(provider)
     )
       throw new OAuthError("expired");

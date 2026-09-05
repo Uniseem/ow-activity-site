@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 import { execFileSync } from "node:child_process";
 
 function gitValue(args: string[]) {
@@ -17,6 +18,7 @@ const buildCommit =
   gitValue(["rev-parse", "HEAD"]);
 
 const nextConfig: NextConfig = {
+  ...(process.env.BUILD_STANDALONE === "1" ? { output: "standalone" as const } : {}),
   // 固定在构建产物里，不能用远端最新提交冒充当前部署版本。
   env: {
     APP_BUILD_COMMIT: /^[a-f0-9]{40}$/i.test(buildCommit)
@@ -26,4 +28,10 @@ const nextConfig: NextConfig = {
   experimental: { serverActions: { bodySizeLimit: "3mb" } },
 };
 
-export default nextConfig;
+export default async function configureNext(phase: string) {
+  if (process.env.DATABASE_PROVIDER === "d1" && phase === PHASE_DEVELOPMENT_SERVER) {
+    const { initOpenNextCloudflareForDev } = await import("@opennextjs/cloudflare");
+    await initOpenNextCloudflareForDev();
+  }
+  return nextConfig;
+}
