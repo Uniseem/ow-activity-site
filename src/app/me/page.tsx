@@ -14,6 +14,8 @@ import {
   TextAreaField,
 } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
+import { OAuthConnections } from "@/components/oauth-connections";
+import { oauthMessages } from "@/lib/oauth/shared";
 import { reviewLabels, roleLabels, userStatusLabels } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +41,14 @@ export default async function MePage({
         title="个人中心"
         description="让队友认识你，也让每一次组队更合拍。"
       />
+      {typeof query.oauth === "string" && oauthMessages[query.oauth] ? (
+        <div className="mb-5">
+          <Notice tone={query.oauth === "linked" ? "success" : "warning"}>
+            {oauthMessages[query.oauth]}
+          </Notice>
+        </div>
+      ) : null}
+      <OAuthConnections userId={user.id} />
       <div className="grid items-start gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="grid gap-4">
           <Card className="gap-5 border border-border p-6 shadow-none">

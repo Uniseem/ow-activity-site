@@ -12,6 +12,11 @@ enum UserRole {
   ADMIN
 }
 
+enum OAuthProvider {
+  google
+  github
+}
+
 enum UserStatus {
   PENDING
   APPROVED
@@ -59,11 +64,12 @@ enum RegistrationStatus {
 model User {
   id                   String              @id @default(cuid())
   username             String              @unique
-  passwordHash         String
+  passwordHash         String?
   role                 UserRole            @default(USER)
   status               UserStatus          @default(PENDING)
   profile              Profile?
   sessions             Session[]
+  oauthAccounts        OAuthAccount[]
   createdEvents        Event[]             @relation("EventCreator")
   registrations        EventRegistration[]
   reviewedProfiles     Profile[]           @relation("ProfileReviewer")
@@ -110,6 +116,37 @@ model Session {
 model AdminSetup {
   id          String    @id
   completedAt DateTime?
+}
+
+model OAuthConfig {
+  provider        OAuthProvider @id
+  clientId        String        @default("")
+  encryptedSecret String?
+  enabled         Boolean       @default(false)
+  revision        Int           @default(0)
+  updatedById     String?
+  updatedAt       DateTime      @updatedAt
+}
+
+model OAuthAccount {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          OAuthProvider
+  providerAccountId String
+  email             String?
+  createdAt         DateTime      @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@unique([userId, provider])
+}
+
+model OAuthState {
+  stateHash String        @id
+  provider  OAuthProvider
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }
 
 model Event {

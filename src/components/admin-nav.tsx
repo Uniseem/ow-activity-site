@@ -1,6 +1,12 @@
 "use client";
 
-import { CalendarDays, LayoutDashboard, Users, Settings2 } from "lucide-react";
+import {
+  CalendarDays,
+  LayoutDashboard,
+  Users,
+  Settings2,
+  KeyRound,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,6 +16,7 @@ export function AdminNav() {
     { href: "/admin/users", label: "用户与资料", icon: Users },
     { href: "/admin/events", label: "活动与报名", icon: CalendarDays },
     { href: "/admin/customize", label: "站点设置", icon: Settings2 },
+    { href: "/admin/oauth", label: "第三方登录", icon: KeyRound },
   ];
   const pathname = usePathname();
   return (

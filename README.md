@@ -25,6 +25,7 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 界面统一使用 HeroUI 3 的卡片、按钮、输入框、选择器、复选框、状态标签和反馈提示，支持桌面与手机布局。主题变量在 `src/app/globals.css` 中配置，共用组件在 `src/components/ui.tsx` 中封装；数据读取与表单处理仍由 Next.js Server Components / Server Actions 完成。
 
 - 注册、登录、退出与个人资料编辑。
+- Google / GitHub 一键登录：未配置或未启用时按钮置灰，管理员在后台填写 OAuth 应用信息后启用；新用户仍需审核。
 - 首次打开 `/admin` 时可以注册首位管理员；第一个成功提交的账号自动获得管理权限，此后入口永久关闭。普通玩家注册仍需审核。
 - 公开玩家卡片展示头像、昵称、宣言、常用位置和常用英雄。
 - 战网 ID、段位、在线时间、联系方式与备注仅本人和管理员可见。
@@ -53,6 +54,20 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 升级已有部署时执行 `npm run db:deploy` 应用新增迁移；Vercel 的构建命令会自动执行。无数据库的本地预览继续使用默认配置。
 
 运行 `npm test` 验证文案回退、配置边界和图片校验；`npm run lint`、`npm run typecheck`、`npm run build` 检查完整项目。
+
+## 第三方登录
+
+管理员进入 `/admin/oauth`（后台“第三方登录”），分别填写 Google、GitHub 的 Client ID 和 Client Secret，勾选启用后保存。页面提供各平台的回调地址和应用创建入口；配置不完整时不能启用，停用后登录页按钮立即变灰。
+
+Google 需要创建 Web 应用 OAuth 客户端，GitHub 需要创建 OAuth App。回调地址分别是站点域名下的 `/api/auth/google/callback` 和 `/api/auth/github/callback`，以后台显示的完整地址为准。Google 只请求基本资料与邮箱，GitHub 只请求 `read:user user:email`，不会申请仓库权限。
+
+部署环境需设置 `OAUTH_ENCRYPTION_KEY`（64 位随机十六进制字符），用于 AES-256-GCM 加密客户端密钥及登录流程 cookie。密钥保存到数据库后不会回显，Client Secret 留空表示保留，清除密钥前须关闭对应登录方式。加密密钥应长期保留；更换后需在后台重新填写客户端密钥。
+
+已有账号可在个人中心绑定 Google 或 GitHub，绑定后保留原资料和权限；不会因为邮箱相同自动合并账号。直接使用第三方注册的新账号没有密码，使用对应平台登录，账号与资料均进入待审核状态。第三方登录不会创建管理员，也不会重新开放首次管理员注册。
+
+OAuth 使用授权码、S256 PKCE、一次性 state 和 HttpOnly cookie；Google ID token 额外校验签名、发行方、受众、有效期、nonce 与已验证邮箱。账号关联使用 Google `sub` 或 GitHub 数字 ID，不保存平台的 access token 或 refresh token。邮箱只在本人登录方式区域显示。
+
+`npm test` 验证加密、状态校验、Google 签名及 GitHub 令牌交换；设置 `OAUTH_TEST_DATABASE_URL` 后运行 `npm run test:oauth`，验证配置保存、并发注册、绑定权限、停用和回调防重放。数据库测试创建独立临时 schema，完成后清理。
 
 ## 本地运行
 
@@ -88,6 +103,7 @@ npm run dev
 | `ADMIN_USERNAME` | 运行 `db:seed` 时的管理员用户名，默认 `admin` |
 | `ADMIN_PASSWORD` | 运行 `db:seed` 时必填，至少 8 字符、最多 72 字节、首尾无空白，无默认密码 |
 | `NEXT_PUBLIC_SITE_URL` | 可选的完整网站地址；未设置时使用 Vercel 项目域名，本地回退到 `http://localhost:3000` |
+| `OAUTH_ENCRYPTION_KEY` | OAuth 配置加密密钥，64 位随机十六进制字符；平台 Client ID / Secret 在后台填写 |
 
 管理员环境变量只供初始化脚本使用，正常登录从数据库校验密码。会话由随机令牌和数据库记录管理，无需额外的会话密钥环境变量。
 

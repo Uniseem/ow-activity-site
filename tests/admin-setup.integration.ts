@@ -105,6 +105,7 @@ test("注册失败回滚初始化机会，并发请求仅产生一名管理员",
     });
     assert.equal(admin.status, "APPROVED");
     assert.equal(admin.profile?.reviewStatus, "APPROVED");
+    assert.ok(admin.passwordHash);
     assert.equal(await bcrypt.compare(password, admin.passwordHash), true);
     const ordinary = await db.user.findUniqueOrThrow({
       where: { username: "existing" },

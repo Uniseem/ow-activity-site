@@ -52,6 +52,19 @@ npm run db:seed
 
 命令行初始化会关闭网页首次注册入口，只创建或更新该管理员，不生成演示活动。重复执行会重设该账号密码，其他用户和活动保留。完成后可移除本地管理员密码；Vercel 运行时也不需要这个密码环境变量。
 
+## Google 和 GitHub 登录
+
+1. 在 Vercel Production 环境添加 Secret `OAUTH_ENCRYPTION_KEY`，使用 32 字节随机值的十六进制编码（64 字符）。可以运行 `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` 生成，设置后重新部署。不要把该值提交到 Git。
+2. 管理员登录 `/admin/oauth`，按页面链接分别创建 [Google Web 应用 OAuth 客户端](https://developers.google.com/identity/openid-connect/openid-connect#settingup) 和 [GitHub OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)。将后台显示的完整回调地址填入对应平台。
+3. 在后台填写各自的 Client ID、Client Secret，勾选“启用”并保存。两平台默认关闭，未填写完整时无法启用；保存后无需重新部署。
+4. 在登录页使用相应按钮。已有账号应先登录个人中心，绑定第三方账号后再用一键登录，避免另建账号。新注册用户仍需管理员审核。
+
+Google 应用处于测试状态时，需在 Google 控制台添加允许登录的测试用户。Client Secret 保存后不会回显，留空保留原值；更换 Client ID 时也需填写新的 Client Secret。
+
+生产回调地址使用 `NEXT_PUBLIC_SITE_URL` 或 Vercel 的生产域名。更换域名后须同步更新两平台的回调配置；开发环境使用独立的客户端与数据库。未经配置的预览环境保持按钮置灰。
+
+平台真实授权需要管理员提供有效凭据后验证。仓库中的自动测试通过本地签发的测试令牌和模拟响应校验协议与身份校验逻辑，不依赖个人 Google/GitHub 凭据。
+
 ## 域名
 
 默认使用 Vercel 分配的域名。页面元数据自动读取 `VERCEL_PROJECT_PRODUCTION_URL` 或 `VERCEL_URL`。

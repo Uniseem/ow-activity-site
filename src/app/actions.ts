@@ -150,7 +150,7 @@ export async function loginAction(
       include: { profile: true },
     });
 
-    if (!user || user.status === "BANNED") {
+    if (!user || !user.passwordHash || user.status === "BANNED") {
       return { message: "用户名或密码不正确。" };
     }
 
