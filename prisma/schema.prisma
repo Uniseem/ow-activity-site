@@ -37,9 +37,7 @@ enum EventType {
   FUN
   TRAINING
   CUSTOM
-  COMPETITIVE
   WATCH
-  OTHER
 }
 
 enum EventStatus {
@@ -114,8 +112,10 @@ model Event {
   title          String
   description    String
   type           EventType           @default(FUN)
+  customType     String?
   startTime      DateTime
   signupDeadline DateTime?
+  signupClosed   Boolean             @default(false)
   maxParticipants Int
   requirements   String?
   voiceChannel   String?

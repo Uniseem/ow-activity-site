@@ -9,10 +9,8 @@ export const eventTypeLabels = {
   SCRIM: "内战",
   FUN: "娱乐赛",
   TRAINING: "训练赛",
-  CUSTOM: "自定义",
-  COMPETITIVE: "竞技组队",
   WATCH: "观赛",
-  OTHER: "其他",
+  CUSTOM: "自定义",
 } as const;
 
 export const eventStatusLabels = {
@@ -55,9 +53,14 @@ export function formatDateTime(date: Date) {
   }).format(date);
 }
 
-export function formatDateInputValue(date: Date) {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
+export function eventTypeLabel(event: {
+  type: string;
+  customType?: string | null;
+}) {
+  return event.type === "CUSTOM" && event.customType
+    ? event.customType
+    : (eventTypeLabels[event.type as keyof typeof eventTypeLabels] ??
+        event.type);
 }
 
 export function getInitials(name: string) {

@@ -28,12 +28,12 @@ import { canJoinEvents, getCurrentUser } from "@/lib/auth";
 import { getPublicEvent } from "@/lib/data";
 import {
   eventStatusLabels,
-  eventTypeLabels,
-  formatDateTime,
+  eventTypeLabel,
   registrationStatusLabels,
   roleLabels,
 } from "@/lib/format";
 import { isDatabaseConfigured, prisma } from "@/lib/prisma";
+import { formatEventDate, shanghaiDateValue } from "@/lib/event-date";
 
 export const dynamic = "force-dynamic";
 export default async function EventDetailPage({
@@ -61,9 +61,13 @@ export default async function EventDetailPage({
   const deadlinePassed = isPastDate(event.signupDeadline);
   const joinAllowed = canJoinEvents(user);
   const unavailable =
-    event.status !== "OPEN" || full || deadlinePassed || !joinAllowed;
+    !["OPEN", "RUNNING"].includes(event.status) ||
+    event.signupClosed ||
+    full ||
+    deadlinePassed ||
+    !joinAllowed;
   const reason =
-    event.status !== "OPEN"
+    !["OPEN", "RUNNING"].includes(event.status) || event.signupClosed
       ? "当前活动未开放报名。"
       : deadlinePassed
         ? "本场活动的报名已截止。"
@@ -96,9 +100,7 @@ export default async function EventDetailPage({
             <div className="grid gap-7 p-6 sm:p-8">
               <div className="flex flex-wrap gap-2">
                 <Chip size="sm" variant="secondary">
-                  {eventTypeLabels[
-                    event.type as keyof typeof eventTypeLabels
-                  ] ?? event.type}
+                  {eventTypeLabel(event)}
                 </Chip>
                 <StatusChip
                   status={event.status}
@@ -117,19 +119,23 @@ export default async function EventDetailPage({
                   <div>
                     <CalendarClock />
                     <div>
-                      <p className="mb-1 text-xs text-muted">活动开始</p>
-                      <time dateTime={event.startTime.toISOString()}>
-                        {formatDateTime(event.startTime)}
+                      <p className="mb-1 text-xs text-muted">
+                        活动日期（上海时间）
+                      </p>
+                      <time dateTime={shanghaiDateValue(event.startTime)}>
+                        {formatEventDate(event.startTime)}
                       </time>
                     </div>
                   </div>
                   <div>
                     <Clock />
                     <div>
-                      <p className="mb-1 text-xs text-muted">报名截止</p>
+                      <p className="mb-1 text-xs text-muted">
+                        报名截止日期（上海时间）
+                      </p>
                       {event.signupDeadline
-                        ? formatDateTime(event.signupDeadline)
-                        : "未设置截止时间"}
+                        ? formatEventDate(event.signupDeadline) + " 当日截止"
+                        : "活动结束前均可报名"}
                     </div>
                   </div>
                 </div>

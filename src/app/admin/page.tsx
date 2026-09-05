@@ -11,10 +11,12 @@ import { PageHeading } from "@/components/page-heading";
 import { ButtonLink, Card } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { syncEventStatuses } from "@/lib/event-schedule";
 
 export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   await requireAdmin();
+  await syncEventStatuses();
   const [pendingProfiles, pendingRegistrations, openEvents, totalUsers] =
     await Promise.all([
       prisma.profile.count({ where: { reviewStatus: "PENDING" } }),

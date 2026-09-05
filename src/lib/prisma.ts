@@ -6,7 +6,8 @@ import { Pool } from "pg";
 
 import { PrismaClient } from "@/generated/prisma/client";
 
-const FALLBACK_DATABASE_URL = "postgresql://user:password@localhost:5432/ow_activity";
+const FALLBACK_DATABASE_URL =
+  "postgresql://user:password@localhost:5432/ow_activity";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
@@ -18,7 +19,9 @@ export function isDatabaseConfigured() {
 
 export function assertDatabaseConfigured() {
   if (!isDatabaseConfigured()) {
-    throw new Error("数据库还没有配置。请先设置 DATABASE_URL 并执行 npm run db:deploy。");
+    throw new Error(
+      "数据库还没有配置。请先设置 DATABASE_URL 并执行 npm run db:deploy。",
+    );
   }
 }
 
@@ -30,7 +33,8 @@ function createPrismaClient() {
 
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL?.trim() || FALLBACK_DATABASE_URL,
-    max: 5,
+    // 本地 Prisma dev 基于单连接的 PGlite，串行查询避免并发协议冲突。
+    max: process.env.NODE_ENV === "development" ? 1 : 5,
     idleTimeoutMillis: 5000,
     connectionTimeoutMillis: 10000,
   });

@@ -30,7 +30,7 @@ export default async function NewEventPage({
         {query.error ? (
           <Notice tone="danger">
             {query.error === "date"
-              ? "活动时间格式有误，请检查开始时间和报名截止时间。"
+              ? "请填写有效日期，报名截止日期不得晚于活动日期。"
               : "活动信息格式有误，请检查必填内容与字数限制。"}
           </Notice>
         ) : null}
@@ -38,7 +38,7 @@ export default async function NewEventPage({
           <div>
             <h2 className="section-title">活动安排</h2>
             <p className="mt-2 text-xs leading-6 text-muted">
-              草稿仅管理员可见，设为「报名中」后玩家即可申请参加。
+              草稿仅管理员可见，设为「开放报名」后玩家即可申请参加。
             </p>
           </div>
           <EventForm action={createEventAction} />

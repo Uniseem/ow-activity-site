@@ -28,8 +28,8 @@ export function useSiteText() {
 }
 export function SiteLogo() {
   const config = useSiteConfiguration();
-  // eslint-disable-next-line @next/next/no-img-element -- Admin-managed logo served directly.
   return config.images.logo ? (
+    // eslint-disable-next-line @next/next/no-img-element -- Admin-managed logo served directly.
     <img
       src={config.images.logo}
       alt=""

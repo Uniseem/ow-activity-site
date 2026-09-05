@@ -10,7 +10,8 @@ import { PlayerCard } from "@/components/profile-card";
 import { EmptyState } from "@/components/page-heading";
 import { ButtonLink, Card, StatusChip } from "@/components/ui";
 import { getHomeData } from "@/lib/data";
-import { eventStatusLabels, formatDateTime } from "@/lib/format";
+import { eventStatusLabels } from "@/lib/format";
+import { formatEventDate } from "@/lib/event-date";
 import { getSiteText } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +90,7 @@ export default async function Home() {
             {featuredEvent ? (
               <p className="mt-5 flex items-center gap-2 text-xs text-white/80">
                 <CalendarDays size={15} />
-                {formatDateTime(featuredEvent.startTime)}
+                {formatEventDate(featuredEvent.startTime)}
               </p>
             ) : null}
             <div className="mt-6 border-t border-white/15 pt-5">

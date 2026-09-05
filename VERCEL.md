@@ -14,6 +14,10 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 
 ## 构建配置
 
+活动日期统一按 `Asia/Shanghai` 处理。`vercel.json` 配置每日上海时间 00:00 的状态同步任务，请在 Vercel 生产环境设置随机的 `CRON_SECRET`，用于验证定时请求。新迁移会保留旧活动的上海日期，并将已移除的活动类型转为带原名称的自定义类型。
+
+Vercel 的定时调用可能延迟，因此活动页面、后台和报名操作也会在读取数据前同步状态。定时任务仅在生产部署运行；本地和预览环境通过请求时同步保持状态正确。参考 [Vercel 定时任务配置](https://vercel.com/docs/cron-jobs/quickstart) 与 [调度限制](https://vercel.com/docs/cron-jobs/usage-and-pricing)。
+
 `vercel.json` 已设置：
 
 ```text

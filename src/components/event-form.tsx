@@ -1,11 +1,8 @@
 import { Save } from "lucide-react";
 import { ActionButton } from "@/components/action-button";
+import { EventTypeField } from "@/components/event-type-field";
 import { InputField, SelectField, TextAreaField } from "@/components/ui";
-import {
-  eventStatusLabels,
-  eventTypeLabels,
-  formatDateInputValue,
-} from "@/lib/format";
+import { DAY_MS, shanghaiDateValue, shanghaiDayBounds } from "@/lib/event-date";
 
 type EventFormProps = {
   action: (formData: FormData) => Promise<void>;
@@ -13,9 +10,11 @@ type EventFormProps = {
     id: string;
     title: string;
     type: string;
+    customType?: string | null;
     description: string;
     startTime: Date;
     signupDeadline?: Date | null;
+    signupClosed?: boolean;
     maxParticipants: number;
     requirements?: string | null;
     voiceChannel?: string | null;
@@ -24,9 +23,9 @@ type EventFormProps = {
 };
 
 export function EventForm({ action, event }: EventFormProps) {
-  const defaultStart = new Date();
-  defaultStart.setDate(defaultStart.getDate() + 3);
-  defaultStart.setHours(20, 30, 0, 0);
+  const defaultStart = new Date(
+    shanghaiDayBounds().today.getTime() + 3 * DAY_MS,
+  );
   return (
     <form action={action} className="grid gap-6">
       {event ? <input type="hidden" name="eventId" value={event.id} /> : null}
@@ -40,30 +39,26 @@ export function EventForm({ action, event }: EventFormProps) {
           defaultValue={event?.title ?? ""}
           placeholder="给这次活动起个名字"
         />
-        <SelectField
-          label="活动类型"
-          name="type"
-          options={eventTypeLabels}
-          defaultValue={event?.type ?? "FUN"}
-          required
+        <EventTypeField
+          defaultType={event?.type}
+          defaultCustomType={event?.customType}
         />
         <InputField
-          label="开始时间"
-          name="startTime"
-          type="datetime-local"
+          label="活动日期"
+          name="eventDate"
+          type="date"
           required
-          defaultValue={formatDateInputValue(event?.startTime ?? defaultStart)}
+          defaultValue={shanghaiDateValue(event?.startTime ?? defaultStart)}
+          description="按上海时间计算，活动当天进行中，次日自动结束。"
         />
         <InputField
-          label="报名截止"
+          label="报名截止日期"
           name="signupDeadline"
-          type="datetime-local"
+          type="date"
           defaultValue={
-            event?.signupDeadline
-              ? formatDateInputValue(event.signupDeadline)
-              : ""
+            event?.signupDeadline ? shanghaiDateValue(event.signupDeadline) : ""
           }
-          description="留空则不设置报名截止时间。"
+          description="截止当天 23:59（上海时间），不得晚于活动日期；留空表示活动结束前均可报名。"
         />
         <InputField
           label="人数上限"
@@ -75,10 +70,21 @@ export function EventForm({ action, event }: EventFormProps) {
           defaultValue={String(event?.maxParticipants ?? 12)}
         />
         <SelectField
-          label="活动状态"
+          label="发布状态"
           name="status"
-          options={eventStatusLabels}
-          defaultValue={event?.status ?? "DRAFT"}
+          options={{
+            DRAFT: "草稿",
+            OPEN: "开放报名",
+            CLOSED: "停止报名",
+            CANCELLED: "已取消",
+          }}
+          defaultValue={
+            event && ["RUNNING", "FINISHED"].includes(event.status)
+              ? event.signupClosed
+                ? "CLOSED"
+                : "OPEN"
+              : (event?.status ?? "DRAFT")
+          }
           required
         />
       </div>

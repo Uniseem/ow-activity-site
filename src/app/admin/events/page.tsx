@@ -5,10 +5,12 @@ import { EmptyState, PageHeading } from "@/components/page-heading";
 import { ButtonLink } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { syncEventStatuses } from "@/lib/event-schedule";
 
 export const dynamic = "force-dynamic";
 export default async function AdminEventsPage() {
   await requireAdmin();
+  await syncEventStatuses();
   const events = await prisma.event.findMany({
     orderBy: { startTime: "desc" },
     include: {

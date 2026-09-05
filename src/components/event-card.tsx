@@ -1,11 +1,8 @@
 import { ArrowUpRight, CalendarClock } from "lucide-react";
 import Link from "next/link";
 import { ButtonLink, Capacity, Card, Chip, StatusChip } from "@/components/ui";
-import {
-  eventStatusLabels,
-  eventTypeLabels,
-  formatDateTime,
-} from "@/lib/format";
+import { eventStatusLabels, eventTypeLabel } from "@/lib/format";
+import { formatEventDate, shanghaiDateValue } from "@/lib/event-date";
 
 type EventCardProps = {
   event: {
@@ -13,6 +10,7 @@ type EventCardProps = {
     title: string;
     description: string;
     type: string;
+    customType?: string | null;
     status: string;
     startTime: Date;
     maxParticipants: number;
@@ -49,8 +47,7 @@ export function EventCard({ event, hrefPrefix = "/events" }: EventCardProps) {
       </div>
       <div className="flex-1">
         <Chip size="sm" variant="secondary">
-          {eventTypeLabels[event.type as keyof typeof eventTypeLabels] ??
-            event.type}
+          {eventTypeLabel(event)}
         </Chip>
         <h3 className="mt-3 text-xl font-semibold tracking-tight">
           <Link href={href} className="hover:text-accent">
@@ -63,8 +60,8 @@ export function EventCard({ event, hrefPrefix = "/events" }: EventCardProps) {
       </div>
       <div className="flex items-center gap-2 text-xs text-muted">
         <CalendarClock size={15} />
-        <time dateTime={event.startTime.toISOString()}>
-          {formatDateTime(event.startTime)}
+        <time dateTime={shanghaiDateValue(event.startTime)}>
+          {formatEventDate(event.startTime)}
         </time>
       </div>
       <Capacity
