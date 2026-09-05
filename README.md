@@ -11,7 +11,7 @@
        → Neon Postgres（Vercel Marketplace）
 ```
 
-- Next.js 16、React 19、TypeScript、Tailwind CSS 4。
+- Next.js 16、React 19、TypeScript、Tailwind CSS 4、HeroUI 3。
 - 页面、登录会话、权限校验、资料与报名审核都运行在同一个 Next.js 项目中。
 - 服务端使用 Node.js runtime，由 Vercel 托管；无需独立后端服务。
 - 运行时通过 `DATABASE_URL` 连接 Neon 连接池；迁移优先使用 `DATABASE_URL_UNPOOLED`。
@@ -22,6 +22,8 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 
 ## 功能
 
+界面统一使用 HeroUI 3 的卡片、按钮、输入框、选择器、复选框、状态标签和反馈提示，支持桌面与手机布局。主题变量在 `src/app/globals.css` 中配置，共用组件在 `src/components/ui.tsx` 中封装；数据读取与表单处理仍由 Next.js Server Components / Server Actions 完成。
+
 - 注册、登录、退出与个人资料编辑。
 - 公开玩家卡片展示头像、昵称、宣言、常用位置和常用英雄。
 - 战网 ID、段位、在线时间、联系方式与备注仅本人和管理员可见。
@@ -31,6 +33,22 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 - 账号与资料审核通过后可报名活动；报名需管理员审核，可自行取消。
 - 报名检查活动状态、截止时间和已通过人数，并限制重复报名。
 - 管理后台包含用户管理、资料审核、报名审核和概览统计。
+
+## 站点设置
+
+管理员登录后进入 `/admin/customize`（后台导航中的“站点设置”），可以修改站点名称、名称旁标识、副标题、站点简介、首页主标题与介绍、页脚信息。
+
+- 品牌图片：导航 Logo、浏览器标签页图标、首页背景图、活动默认封面，支持链接或上传 PNG/JPEG/WebP/GIF（每张最大 2 MB）。
+- 主题色：调整按钮、选中状态等位置使用的品牌主色。
+- 点击“保存设置”后生效，无需重新部署；支持撤销未保存修改和恢复默认图片。多人同时编辑时会提示版本冲突，防止覆盖其他管理员的修改。
+
+配置存于 `SiteSettings`，图片存于 `SiteAsset`，通过 `/api/site-assets/[id]` 提供公开的只读图片。上传和修改均需要已通过审核的管理员权限。
+
+`src/lib/site-copy.ts` 定义基础品牌文案，`src/lib/site-config.ts` 定义默认值与校验规则。功能按钮、表单提示和状态标签保持固定；活动及玩家数据在对应管理页面编辑。
+
+升级已有部署时执行 `npm run db:deploy` 应用新增迁移；Vercel 的构建命令会自动执行。无数据库的本地预览继续使用默认配置。
+
+运行 `npm test` 验证文案回退、配置边界和图片校验；`npm run lint`、`npm run typecheck`、`npm run build` 检查完整项目。
 
 ## 本地运行
 

@@ -151,3 +151,20 @@ model EventRegistration {
   @@index([status])
   @@index([userId])
 }
+
+model SiteSettings {
+  id          String   @id
+  values      Json     @default("{}")
+  revision    Int      @default(0)
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model SiteAsset {
+  id           String   @id @default(cuid())
+  name         String
+  mimeType     String
+  data         Bytes
+  uploadedById String
+  createdAt    DateTime @default(now())
+}

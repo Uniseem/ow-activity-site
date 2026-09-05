@@ -1,122 +1,187 @@
-import { ArrowRight, CalendarDays, ShieldCheck, Users } from "lucide-react";
-import Link from "next/link";
-
+import {
+  ArrowRight,
+  CalendarDays,
+  Crosshair,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { EventCard } from "@/components/event-card";
 import { PlayerCard } from "@/components/profile-card";
+import { EmptyState } from "@/components/page-heading";
+import { ButtonLink, Card, StatusChip } from "@/components/ui";
 import { getHomeData } from "@/lib/data";
+import { eventStatusLabels, formatDateTime } from "@/lib/format";
+import { getSiteText } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const { events, profiles } = await getHomeData();
+  const { events, profiles, isDemo } = await getHomeData();
+  const t = await getSiteText();
   const featuredEvent = events[0];
-
   return (
-    <main>
-      <section className="relative overflow-hidden bg-[#181a20] text-white">
-        <div className="absolute inset-0 bg-[url('/arena-cover.png')] bg-cover bg-center opacity-35" />
-        <div className="absolute inset-0 bg-black/45" />
-        <div className="page-shell relative grid min-h-[360px] gap-8 py-10 md:grid-cols-[1fr_360px] md:items-end">
-          <div className="max-w-2xl">
-            <div className="mb-4 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-2 rounded-md bg-white/15 px-3 py-1 text-sm font-bold backdrop-blur">
-                <ShieldCheck className="h-4 w-4" />
-                审核制
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-md bg-white/15 px-3 py-1 text-sm font-bold backdrop-blur">
-                <Users className="h-4 w-4" />
-                小圈子
-              </span>
+    <main className="page-shell">
+      <section className="hero-panel">
+        <div className="hero-content">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-medium tracking-widest text-white/65">
+              <Crosshair size={16} />
+              {t("home.eyebrow")}
             </div>
-            <h1 className="max-w-[760px] text-4xl font-black leading-tight sm:text-5xl">
-              守望先锋玩家活动站
+            <h1 className="hero-title">
+              {t("home.title1")}
+              {t("home.title2") ? (
+                <>
+                  <br />
+                  {t("home.title2")}
+                </>
+              ) : null}
             </h1>
-            <p className="mt-4 max-w-xl text-base leading-7 text-white/85">
-              公开卡片只展示头像、昵称和宣言；详细资料与活动报名由管理员审核。
+            <p className="mt-5 max-w-sm whitespace-pre-line text-sm leading-7 text-white/65">
+              {t("home.description")}
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/events"
-                className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--orange)] px-4 py-2 text-sm font-black text-white hover:bg-[#dd6815]"
+            <div className="mt-7 flex flex-wrap gap-3">
+              <ButtonLink href="/events" size="lg">
+                <CalendarDays size={17} />
+                探索活动
+                <ArrowRight size={17} />
+              </ButtonLink>
+              <ButtonLink
+                href="/players"
+                variant="ghost"
+                size="lg"
+                className="text-white hover:bg-white/10"
               >
-                <CalendarDays className="h-4 w-4" />
-                看活动
-              </Link>
-              <Link
-                href="/register"
-                className="focus-ring inline-flex min-h-11 items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-black text-[#181a20] hover:bg-white/90"
-              >
-                注册
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+                认识玩家
+              </ButtonLink>
             </div>
+            <p className="mt-7 flex items-center gap-2 text-[11px] text-white/50">
+              <ShieldCheck size={14} />
+              审核制社区 · 为热爱相聚
+            </p>
           </div>
-
-          {featuredEvent ? (
-            <div className="rounded-md border border-white/20 bg-white/12 p-4 backdrop-blur">
-              <p className="text-sm font-bold text-white/70">当前活动</p>
-              <h2 className="mt-2 text-2xl font-black">{featuredEvent.title}</h2>
-              <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/80">
-                {featuredEvent.description}
+          <div className="hero-feature">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-[11px] font-medium tracking-widest text-white/55">
+                {isDemo ? "活动预览" : "近期活动"}
+              </span>
+              {featuredEvent ? (
+                <StatusChip
+                  status={featuredEvent.status}
+                  label={
+                    eventStatusLabels[
+                      featuredEvent.status as keyof typeof eventStatusLabels
+                    ]
+                  }
+                  className="bg-white/15 text-white"
+                />
+              ) : (
+                <Crosshair size={18} className="text-white/50" />
+              )}
+            </div>
+            <h2 className="mt-6 text-2xl font-semibold tracking-tight">
+              {featuredEvent?.title ?? "下一次集结，等你加入"}
+            </h2>
+            <p className="mt-3 line-clamp-2 text-sm leading-7 text-white/60">
+              {featuredEvent?.description ??
+                "完善你的玩家资料，认识新队友。新的社区活动将在这里发布。"}
+            </p>
+            {featuredEvent ? (
+              <p className="mt-5 flex items-center gap-2 text-xs text-white/80">
+                <CalendarDays size={15} />
+                {formatDateTime(featuredEvent.startTime)}
               </p>
-              <Link
-                href={`/events/${featuredEvent.id}`}
-                className="focus-ring mt-5 inline-flex min-h-10 items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-black text-[#181a20] hover:bg-white/90"
+            ) : null}
+            <div className="mt-6 border-t border-white/15 pt-5">
+              <ButtonLink
+                href={
+                  featuredEvent ? "/events/" + featuredEvent.id : "/register"
+                }
+                variant="secondary"
+                className="w-full justify-between bg-white text-zinc-800 hover:bg-white/90"
               >
-                查看报名
-              </Link>
+                {featuredEvent ? "查看活动详情" : "创建玩家资料"}
+                <ArrowRight size={16} />
+              </ButtonLink>
             </div>
-          ) : null}
+          </div>
         </div>
       </section>
-
-      <section className="page-shell grid gap-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      <section aria-labelledby="home-events">
+        <div className="section-heading">
           <div>
-            <p className="text-sm font-black uppercase tracking-[0.12em] text-[var(--teal)]">
-              Events
-            </p>
-            <h2 className="mt-1 text-2xl font-black">正在推进的活动</h2>
+            <p className="eyebrow">Get together</p>
+            <h2 id="home-events" className="section-title">
+              下一场，一起上场
+            </h2>
           </div>
-          <Link
-            href="/events"
-            className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-md border border-black/10 bg-white px-3 py-2 text-sm font-bold hover:bg-black/5"
-          >
+          <ButtonLink href="/events" variant="ghost" size="sm">
             全部活动
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+            <ArrowRight size={15} />
+          </ButtonLink>
         </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {events.map((event) => (
-            <EventCard key={event.id} event={event} />
-          ))}
-        </div>
-      </section>
-
-      <section className="page-shell grid gap-5 pt-0">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.12em] text-[var(--teal)]">
-              Players
-            </p>
-            <h2 className="mt-1 text-2xl font-black">已审核玩家</h2>
+        {events.length ? (
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
           </div>
-          <Link
-            href="/players"
-            className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-md border border-black/10 bg-white px-3 py-2 text-sm font-bold hover:bg-black/5"
-          >
-            玩家列表
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {profiles.map((profile) => (
-            <PlayerCard key={profile.id} profile={profile} />
-          ))}
-        </div>
+        ) : (
+          <EmptyState
+            title="新活动正在路上"
+            description="活动发布后，会出现在这里。先去认识一下未来的队友吧。"
+            action={
+              <ButtonLink href="/players" variant="secondary">
+                发现玩家
+              </ButtonLink>
+            }
+          />
+        )}
       </section>
+      <section aria-labelledby="home-players">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Meet the players</p>
+            <h2 id="home-players" className="section-title">
+              你的下一位默契队友
+            </h2>
+          </div>
+          <ButtonLink href="/players" variant="ghost" size="sm">
+            所有玩家
+            <ArrowRight size={15} />
+          </ButtonLink>
+        </div>
+        {profiles.length ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {profiles.map((profile) => (
+              <PlayerCard key={profile.id} profile={profile} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="等你成为第一位队友"
+            description="注册并完善资料，审核通过后就能在这里与大家见面。"
+            action={<ButtonLink href="/register">加入社区</ButtonLink>}
+          />
+        )}
+      </section>
+      <Card className="mt-8 flex-row flex-wrap items-center justify-between gap-5 border border-border bg-surface p-6 shadow-none">
+        <div className="flex items-center gap-4">
+          <span className="icon-tile shrink-0">
+            <Users size={22} />
+          </span>
+          <div>
+            <h2 className="font-semibold">热爱相同，组队就简单。</h2>
+            <p className="mt-1 text-xs leading-6 text-muted">
+              从一张玩家卡片开始，让下一场开黑有你的位置。
+            </p>
+          </div>
+        </div>
+        <ButtonLink href="/me" variant="secondary" size="sm">
+          完善我的资料
+          <ArrowRight size={15} />
+        </ButtonLink>
+      </Card>
     </main>
   );
 }

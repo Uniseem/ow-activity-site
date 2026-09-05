@@ -1,48 +1,56 @@
 import { Plus } from "lucide-react";
-import Link from "next/link";
-
+import { AdminNav } from "@/components/admin-nav";
 import { EventCard } from "@/components/event-card";
+import { EmptyState, PageHeading } from "@/components/page-heading";
+import { ButtonLink } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
 export default async function AdminEventsPage() {
   await requireAdmin();
-
   const events = await prisma.event.findMany({
     orderBy: { startTime: "desc" },
     include: {
-      registrations: {
-        where: { status: "APPROVED" },
-        select: { id: true },
-      },
+      registrations: { where: { status: "APPROVED" }, select: { id: true } },
     },
   });
-
   return (
-    <main className="page-shell grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-sm font-black uppercase tracking-[0.12em] text-[var(--teal)]">
-            Admin
-          </p>
-          <h1 className="mt-1 text-3xl font-black">活动管理</h1>
+    <main className="page-shell">
+      <PageHeading
+        eyebrow="Event management"
+        title="活动与报名管理"
+        description="从草稿到集结，管理每一场社区活动。"
+        action={
+          <ButtonLink href="/admin/events/new">
+            <Plus size={17} />
+            创建活动
+          </ButtonLink>
+        }
+      />
+      <AdminNav />
+      {events.length ? (
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {events.map((event) => (
+            <EventCard
+              key={event.id}
+              event={event}
+              hrefPrefix="/admin/events"
+            />
+          ))}
         </div>
-        <Link
-          href="/admin/events/new"
-          className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--orange)] px-4 py-2 text-sm font-black text-white hover:bg-[#dd6815]"
-        >
-          <Plus className="h-4 w-4" />
-          创建活动
-        </Link>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {events.map((event) => (
-          <EventCard key={event.id} event={event} hrefPrefix="/admin/events" />
-        ))}
-      </div>
+      ) : (
+        <EmptyState
+          title="创建社区的第一场活动"
+          description="设置玩法、时间和人数，准备迎接队友加入。"
+          action={
+            <ButtonLink href="/admin/events/new">
+              <Plus size={16} />
+              创建活动
+            </ButtonLink>
+          }
+        />
+      )}
     </main>
   );
 }

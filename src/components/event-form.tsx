@@ -1,4 +1,6 @@
+import { Save } from "lucide-react";
 import { ActionButton } from "@/components/action-button";
+import { InputField, SelectField, TextAreaField } from "@/components/ui";
 import {
   eventStatusLabels,
   eventTypeLabels,
@@ -25,41 +27,34 @@ export function EventForm({ action, event }: EventFormProps) {
   const defaultStart = new Date();
   defaultStart.setDate(defaultStart.getDate() + 3);
   defaultStart.setHours(20, 30, 0, 0);
-
   return (
-    <form action={action} className="grid gap-5">
+    <form action={action} className="grid gap-6">
       {event ? <input type="hidden" name="eventId" value={event.id} /> : null}
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field
+      <div className="grid items-start gap-5 md:grid-cols-2">
+        <InputField
           label="活动标题"
           name="title"
           required
+          minLength={2}
+          maxLength={60}
           defaultValue={event?.title ?? ""}
+          placeholder="给这次活动起个名字"
         />
-        <label className="grid gap-2 text-sm font-semibold">
-          活动类型
-          <select
-            className="focus-ring min-h-11 rounded-md border border-black/15 px-3 text-base"
-            name="type"
-            defaultValue={event?.type ?? "FUN"}
-            required
-          >
-            {Object.entries(eventTypeLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Field
+        <SelectField
+          label="活动类型"
+          name="type"
+          options={eventTypeLabels}
+          defaultValue={event?.type ?? "FUN"}
+          required
+        />
+        <InputField
           label="开始时间"
           name="startTime"
           type="datetime-local"
           required
           defaultValue={formatDateInputValue(event?.startTime ?? defaultStart)}
         />
-        <Field
+        <InputField
           label="报名截止"
           name="signupDeadline"
           type="datetime-local"
@@ -68,100 +63,55 @@ export function EventForm({ action, event }: EventFormProps) {
               ? formatDateInputValue(event.signupDeadline)
               : ""
           }
+          description="留空则不设置报名截止时间。"
         />
-        <Field
+        <InputField
           label="人数上限"
           name="maxParticipants"
           type="number"
-          required
           min={2}
           max={60}
+          required
           defaultValue={String(event?.maxParticipants ?? 12)}
         />
-        <label className="grid gap-2 text-sm font-semibold">
-          活动状态
-          <select
-            className="focus-ring min-h-11 rounded-md border border-black/15 px-3 text-base"
-            name="status"
-            defaultValue={event?.status ?? "DRAFT"}
-            required
-          >
-            {Object.entries(eventStatusLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <label className="grid gap-2 text-sm font-semibold">
-        活动说明
-        <textarea
-          className="focus-ring min-h-36 resize-y rounded-md border border-black/15 px-3 py-2 text-base"
-          name="description"
+        <SelectField
+          label="活动状态"
+          name="status"
+          options={eventStatusLabels}
+          defaultValue={event?.status ?? "DRAFT"}
           required
-          defaultValue={event?.description ?? ""}
         />
-      </label>
-
-      <label className="grid gap-2 text-sm font-semibold">
-        参与要求
-        <textarea
-          className="focus-ring min-h-24 resize-y rounded-md border border-black/15 px-3 py-2 text-base"
-          name="requirements"
-          defaultValue={event?.requirements ?? ""}
-        />
-      </label>
-
-      <Field
+      </div>
+      <TextAreaField
+        label="活动说明"
+        name="description"
+        required
+        minLength={6}
+        maxLength={1000}
+        defaultValue={event?.description ?? ""}
+        placeholder="介绍玩法、流程和集合方式…"
+        className="min-h-36"
+      />
+      <TextAreaField
+        label="参与要求"
+        name="requirements"
+        maxLength={500}
+        defaultValue={event?.requirements ?? ""}
+        placeholder="例如位置、段位或语音要求，可留空"
+      />
+      <InputField
         label="语音频道说明"
         name="voiceChannel"
+        maxLength={200}
         defaultValue={event?.voiceChannel ?? ""}
         placeholder="例如 Discord 频道 / 开黑啦房间"
       />
-
-      <div className="flex justify-end">
-        <ActionButton className="bg-[var(--orange)] text-white hover:bg-[#dd6815]">
+      <div className="flex justify-end border-t border-separator pt-5">
+        <ActionButton pendingLabel="保存中…">
+          <Save size={16} />
           {event ? "保存活动" : "创建活动"}
         </ActionButton>
       </div>
     </form>
-  );
-}
-
-function Field({
-  label,
-  name,
-  defaultValue,
-  type = "text",
-  required,
-  min,
-  max,
-  placeholder,
-}: {
-  label: string;
-  name: string;
-  defaultValue?: string;
-  type?: string;
-  required?: boolean;
-  min?: number;
-  max?: number;
-  placeholder?: string;
-}) {
-  return (
-    <label className="grid gap-2 text-sm font-semibold">
-      {label}
-      <input
-        className="focus-ring min-h-11 rounded-md border border-black/15 px-3 text-base"
-        name={name}
-        type={type}
-        required={required}
-        min={min}
-        max={max}
-        defaultValue={defaultValue}
-        placeholder={placeholder}
-      />
-    </label>
   );
 }
