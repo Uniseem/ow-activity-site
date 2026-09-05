@@ -107,6 +107,11 @@ model Session {
   @@index([expiresAt])
 }
 
+model AdminSetup {
+  id          String    @id
+  completedAt DateTime?
+}
+
 model Event {
   id             String              @id @default(cuid())
   title          String

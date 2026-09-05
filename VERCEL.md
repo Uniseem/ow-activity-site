@@ -32,21 +32,25 @@ Framework: Next.js
 
 ## 初始化管理员
 
-在本地 `.env.local` 配置目标数据库地址，并设置 `ADMIN_USERNAME`、`ADMIN_PASSWORD`。也可以用 Vercel CLI 拉取目标环境的变量；生产环境示例：
+新站点部署完成后打开 `/admin`，页面会跳转到首次管理员注册。填写用户名、公开昵称、密码和确认密码后，首个成功提交的账号获得管理员权限并进入后台，不需要预设管理员环境变量。
+
+首次注册通过数据库事务完成，并发提交只能创建一名管理员。成功后入口永久关闭，后续普通用户仍需审核。升级已有管理员的站点时也会关闭此入口，不会改变原有账号权限。
+
+需要通过命令行初始化或恢复管理员时，在本地配置目标数据库地址，并设置 `ADMIN_USERNAME`、`ADMIN_PASSWORD`。可以用 Vercel CLI 将生产变量拉取到独立的本地文件，避免覆盖开发配置：
 
 ```bash
 npx vercel link
-npx vercel env pull .env.local --environment=production
+npx vercel env pull .env.production.local --environment=production
 ```
 
-确认关联的是当前项目和预期环境，在 `.env.local` 补充管理员用户名及密码，然后运行：
+确认关联的是当前项目和预期环境，加载该文件并设置 `NODE_ENV=production`、管理员用户名及密码，然后运行：
 
 ```bash
 npm run db:deploy
 npm run db:seed
 ```
 
-初始化只创建或更新该管理员，不生成演示活动。重复执行会重设该账号密码，其他用户和活动保留。完成后可从 `.env.local` 移除管理员密码；Vercel 运行时也不需要这个密码环境变量。
+命令行初始化会关闭网页首次注册入口，只创建或更新该管理员，不生成演示活动。重复执行会重设该账号密码，其他用户和活动保留。完成后可移除本地管理员密码；Vercel 运行时也不需要这个密码环境变量。
 
 ## 域名
 

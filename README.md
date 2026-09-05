@@ -25,6 +25,7 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 界面统一使用 HeroUI 3 的卡片、按钮、输入框、选择器、复选框、状态标签和反馈提示，支持桌面与手机布局。主题变量在 `src/app/globals.css` 中配置，共用组件在 `src/components/ui.tsx` 中封装；数据读取与表单处理仍由 Next.js Server Components / Server Actions 完成。
 
 - 注册、登录、退出与个人资料编辑。
+- 首次打开 `/admin` 时可以注册首位管理员；第一个成功提交的账号自动获得管理权限，此后入口永久关闭。普通玩家注册仍需审核。
 - 公开玩家卡片展示头像、昵称、宣言、常用位置和常用英雄。
 - 战网 ID、段位、在线时间、联系方式与备注仅本人和管理员可见。
 - 头像支持 PNG、JPEG、WebP、GIF 文件或外部链接；文件最大 512 KB，存入数据库。
@@ -65,15 +66,18 @@ macOS / Linux 使用 `cp .env.example .env.local`。Next.js、Prisma CLI 和管�
 
 **仅预览页面**：保持 `DATABASE_URL` 为空，运行 `npm run dev`，打开 `http://localhost:3000`。首页、活动页和玩家页使用演示数据；写入功能需要数据库。Vercel 构建要求配置真实数据库。
 
-**使用完整功能**：在 `.env.local` 填写数据库地址、管理员用户名及密码，然后执行：
+**使用完整功能**：在 `.env.local` 填写数据库地址，然后执行：
 
 ```bash
 npm run db:deploy
-npm run db:seed
 npm run dev
 ```
 
-初始化只创建或更新管理员，不创建示例活动。重复运行 `db:seed` 会将该管理员的密码更新为当前 `ADMIN_PASSWORD`，不会删除已有玩家或活动。
+打开 `/admin`，设置首位管理员的用户名、昵称与密码，注册成功后直接进入后台。初始化不创建示例活动；多个访客同时提交时，仅一人能成功。已有管理员的站点升级后不会开放注册，管理员之后被封禁或删除也不会重新开放。
+
+需要命令行初始化或恢复管理员时，仍可设置 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 后运行 `npm run db:seed`。该命令会关闭网页首次注册入口，并创建或更新指定管理员；重复执行会重设其密码，不会删除其他用户和活动。
+
+`npm test` 包含首次管理员表单校验。设置 `ADMIN_SETUP_TEST_DATABASE_URL` 后运行 `npm run test:admin-setup`，可验证数据库并发注册、失败回滚及旧站点升级；测试创建独立临时 schema，并在完成后清理。
 
 ## 环境变量
 
