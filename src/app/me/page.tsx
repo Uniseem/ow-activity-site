@@ -1,11 +1,3 @@
-import {
-  ArrowUpRight,
-  CalendarDays,
-  Eye,
-  LockKeyhole,
-  Save,
-  ShieldCheck,
-} from "lucide-react";
 import Link from "next/link";
 import { updateProfileAction } from "@/app/actions";
 import { ActionButton } from "@/components/action-button";
@@ -65,10 +57,7 @@ export default async function MePage({
     typeof query.error === "string" ? errors[query.error] : undefined;
   return (
     <main className="page-shell">
-      <PageHeading
-        title="个人中心"
-        description="编辑玩家资料，查看报名和登录方式。"
-      />
+      <PageHeading title="个人中心" />
       {typeof query.oauth === "string" && oauthMessages[query.oauth] ? (
         <div className="mb-5">
           <Notice tone={query.oauth === "linked" ? "success" : "warning"}>
@@ -84,7 +73,7 @@ export default async function MePage({
       </nav>
       <div className="profile-layout">
         <aside className="grid gap-4">
-          <Card className="profile-summary gap-5 border border-border p-6 shadow-none">
+          <Card className="profile-summary gap-5 p-6">
             <Avatar
               src={profile?.avatarUrl}
               name={profile?.displayName ?? user.username}
@@ -96,18 +85,18 @@ export default async function MePage({
               </h2>
               <p className="mt-1 text-sm text-muted">@{user.username}</p>
             </div>
-            <p className="text-sm leading-6 text-muted">
-              {profile?.slogan || "写一句宣言，让队友认识你。"}
-            </p>
+            {profile?.slogan ? (
+              <p className="text-sm leading-6 text-muted">{profile.slogan}</p>
+            ) : null}
             <div className="grid gap-3 border-t border-separator pt-5">
-              <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center justify-between gap-2 text-sm">
                 <span className="text-muted">账号状态</span>
                 <StatusChip
                   status={user.status}
                   label={userStatusLabels[user.status]}
                 />
               </div>
-              <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center justify-between gap-2 text-sm">
                 <span className="text-muted">资料审核</span>
                 <StatusChip
                   status={profile?.reviewStatus ?? "PENDING"}
@@ -118,22 +107,19 @@ export default async function MePage({
               </div>
             </div>
             <ButtonLink href="/events" variant="secondary" className="w-full">
-              去看看活动
+              查看活动
             </ButtonLink>
           </Card>
-          <Notice>
-            <ShieldCheck size={16} className="mb-2" />
-            资料保存后，管理员会审核你的公开信息。账号与资料均通过审核后即可报名。
-          </Notice>
+          {user.role !== "ADMIN" ? (
+            <Notice>
+              公开资料修改后需重新审核。账号与资料均通过审核后即可报名。
+            </Notice>
+          ) : null}
           {profile?.reviewNote ? (
             <Notice tone="warning">审核备注：{profile.reviewNote}</Notice>
           ) : null}
-          <Card
-            id="my-activities"
-            className="gap-4 border border-border p-5 shadow-none"
-          >
+          <Card id="my-activities" className="gap-4 p-5">
             <div className="flex items-center gap-2">
-              <CalendarDays size={17} className="text-accent" />
               <h2 className="font-semibold">我的报名</h2>
             </div>
             {registrations.length ? (
@@ -146,9 +132,8 @@ export default async function MePage({
                   >
                     <span className="flex items-start justify-between gap-2 text-sm font-medium">
                       {registration.event.title}
-                      <ArrowUpRight size={14} className="shrink-0 text-muted" />
                     </span>
-                    <span className="text-[10px] text-muted">
+                    <span className="text-sm text-muted">
                       {formatEventDate(registration.event.startTime)}
                     </span>
                     <StatusChip
@@ -159,9 +144,7 @@ export default async function MePage({
                 ))}
               </div>
             ) : (
-              <p className="text-xs leading-6 text-muted">
-                还没有报名记录。找到喜欢的活动，开启下一次组队。
-              </p>
+              <p className="text-sm text-muted">暂无报名记录。</p>
             )}
           </Card>
         </aside>
@@ -179,18 +162,10 @@ export default async function MePage({
             </Notice>
           ) : null}
           {error ? <Notice tone="danger">{error}</Notice> : null}
-          <Card className="border border-border p-6 shadow-none sm:p-8">
+          <Card className="p-6 sm:p-8">
             <form action={updateProfileAction} className="grid gap-8">
               <fieldset className="form-section" id="public-profile">
-                <legend>
-                  <span className="flex items-center gap-2">
-                    <Eye size={18} className="text-accent" />
-                    公开玩家卡片
-                  </span>
-                </legend>
-                <p className="text-xs leading-6 text-muted">
-                  头像、昵称、宣言、常用位置和英雄，审核通过后会公开展示。
-                </p>
+                <legend>公开资料</legend>
                 <div className="grid gap-5 md:grid-cols-2">
                   <InputField
                     label="公开昵称"
@@ -212,7 +187,6 @@ export default async function MePage({
                     type="file"
                     accept="image/png,image/jpeg,image/webp,image/gif"
                     description="PNG、JPEG、WebP 或 GIF，最大 512 KB。"
-                    className="text-xs"
                   />
                   <InputField
                     label="或使用头像链接"
@@ -242,20 +216,15 @@ export default async function MePage({
                   required
                   maxLength={80}
                   defaultValue={profile?.slogan ?? ""}
-                  description="最多 80 字，分享你的开黑态度。"
+                  description="最多 80 字。"
                 />
               </fieldset>
               <fieldset
                 className="form-section border-t border-separator pt-7"
                 id="private-profile"
               >
-                <legend>
-                  <span className="flex items-center gap-2">
-                    <LockKeyhole size={18} className="text-accent" />
-                    私密资料
-                  </span>
-                </legend>
-                <p className="text-xs leading-6 text-muted">
+                <legend>私密资料</legend>
+                <p className="text-sm leading-6 text-muted">
                   仅你和管理员可见，用于安排活动与联系。
                 </p>
                 <div className="grid gap-5 md:grid-cols-2">
@@ -293,10 +262,7 @@ export default async function MePage({
                 />
               </fieldset>
               <div className="flex justify-end border-t border-separator pt-5">
-                <ActionButton pendingLabel="保存中…">
-                  <Save size={16} />
-                  保存资料
-                </ActionButton>
+                <ActionButton pendingLabel="保存中…">保存资料</ActionButton>
               </div>
             </form>
           </Card>

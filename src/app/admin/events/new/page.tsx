@@ -31,7 +31,7 @@ export default async function NewEventPage({
               : "活动信息格式有误，请检查必填内容与字数限制。"}
           </Notice>
         ) : null}
-        <Card className="gap-6 border border-border p-6 shadow-none sm:p-8">
+        <Card className="gap-6 p-6 sm:p-8">
           <div>
             <h2 className="section-title">活动安排</h2>
             <p className="mt-2 text-xs leading-6 text-muted">

@@ -12,7 +12,7 @@ export default function Loading() {
         {[0, 1, 2].map((index) => (
           <Card
             key={index}
-            className="gap-5 border border-border p-6 shadow-none"
+            className="gap-5 p-6"
           >
             <Skeleton className="h-14 w-14 rounded-2xl" />
             <Skeleton className="h-5 w-3/4 rounded-lg" />

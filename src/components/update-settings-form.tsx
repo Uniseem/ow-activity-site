@@ -74,7 +74,7 @@ export function UpdateSettingsForm({
   }
   return (
     <div className="admin-setting-section grid gap-5">
-      <Card className="gap-5 border border-border p-6 shadow-none">
+      <Card className="gap-5 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="section-title">版本状态</h2>
@@ -110,7 +110,7 @@ export function UpdateSettingsForm({
           </p>
         )}
       </Card>
-      <Card className="gap-3 border border-border px-6 py-3 shadow-none">
+      <Card className="gap-3 px-6 py-3">
         <details className="admin-disclosure" open={!initial.hasDeployHook}>
           <summary>
             <span>更新设置</span>

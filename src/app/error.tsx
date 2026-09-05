@@ -8,7 +8,7 @@ export default function ErrorPage({
 }) {
   return (
     <main className="page-shell py-20">
-      <Card className="mx-auto max-w-lg items-center gap-5 border border-border p-10 text-center shadow-none">
+      <Card className="mx-auto max-w-lg items-center gap-5 p-10 text-center">
         <span className="icon-tile">
           <RefreshCw size={23} />
         </span>

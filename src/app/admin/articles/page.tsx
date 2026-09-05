@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { buttonVariants } from "@heroui/react";
 import Link from "next/link";
 import { Eye, Plus, Search } from "lucide-react";
 import { EmptyState, PageHeading } from "@/components/page-heading";
@@ -84,12 +85,15 @@ export default async function AdminArticlesPage({
         </div>
       ) : null}
       <div className="directory-toolbar">
-        <nav className="directory-filters" aria-label="文章状态筛选">
+        <nav className="flex flex-wrap gap-1" aria-label="文章状态筛选">
           {filters.map((filter) => (
             <Link
               key={filter.id}
               href={`/admin/articles?${new URLSearchParams({ status: filter.id, q })}`}
-              className={`filter-link ${status === filter.id ? "active" : ""}`}
+              className={buttonVariants({
+                variant: status === filter.id ? "secondary" : "ghost",
+                size: "sm",
+              })}
               aria-current={status === filter.id ? "page" : undefined}
             >
               {filter.label} <span>{statusCount(filter.id)}</span>

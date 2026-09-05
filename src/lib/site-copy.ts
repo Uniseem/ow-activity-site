@@ -30,7 +30,7 @@ export const copyFields: CopyField[] = [
   {
     key: "brand.metaDescription",
     group: "品牌信息",
-    label: "站点简介",
+    label: "搜索引擎简介",
     defaultValue:
       "上海交大守望先锋玩家社区。参加校内内战、娱乐赛、训练赛与观赛活动，认识一起开黑的交大队友。",
     required: false,
@@ -60,15 +60,14 @@ export const copyFields: CopyField[] = [
     key: "home.description",
     group: "首页介绍",
     label: "首页介绍文字",
-    defaultValue:
-      "从课后的开黑，到周末的内战与观赛。\n在这里，找到一起玩守望先锋的交大队友。",
+    defaultValue: "参加校内活动，认识一起开黑的交大队友。",
     required: false,
   },
   {
     key: "footer.text",
     group: "页脚信息",
     label: "页脚标语",
-    defaultValue: "上海交大守望先锋玩家社区",
+    defaultValue: "",
     required: false,
   },
   {
@@ -79,3 +78,14 @@ export const copyFields: CopyField[] = [
     required: false,
   },
 ];
+
+// Keep old keys valid so updating visible settings preserves stored content.
+const retiredCopyKeys = new Set([
+  "brand.badge",
+  "brand.subtitle",
+  "home.eyebrow",
+  "footer.text",
+]);
+export const editableCopyFields = copyFields.filter(
+  (field) => !retiredCopyKeys.has(field.key),
+);

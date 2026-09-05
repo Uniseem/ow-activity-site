@@ -1,10 +1,18 @@
 "use client";
 
-import { useActionState, useEffect, useState, type ReactNode } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { Button, Spinner } from "@heroui/react";
 import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { EventFormResult } from "@/app/actions";
+import { uploadSiteAssetAction } from "@/app/admin/customize/actions";
 import { ActionButton } from "@/components/action-button";
 import { EventTypeField } from "@/components/event-type-field";
 import {
@@ -14,6 +22,8 @@ import {
   TextAreaField,
 } from "@/components/ui";
 import { DAY_MS, shanghaiDateValue, shanghaiDayBounds } from "@/lib/event-date";
+import { isSafeImageSource } from "@/lib/site-config";
+import { MAX_SITE_ASSET_BYTES } from "@/lib/site-asset";
 
 type EventFormProps = {
   action: (formData: FormData) => Promise<EventFormResult>;
@@ -24,6 +34,7 @@ type EventFormProps = {
     type: string;
     customType?: string | null;
     description: string;
+    coverUrl?: string;
     startTime: Date;
     signupDeadline?: Date | null;
     signupClosed?: boolean;
@@ -37,11 +48,20 @@ type EventFormProps = {
 export function EventForm({ action, event, feedback }: EventFormProps) {
   const router = useRouter();
   const [changed, setChanged] = useState(false);
+  const [coverUrl, setCoverUrl] = useState(event?.coverUrl ?? "");
+  const [coverError, setCoverError] = useState("");
+  const [coverAuthRequired, setCoverAuthRequired] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [failedCover, setFailedCover] = useState<string | null>(null);
+  const coverInput = useRef<HTMLInputElement>(null);
+  const uploadLock = useRef(false);
   const [result, submit, pending] = useActionState(
     async (
       _previous: EventFormResult,
       form: FormData,
     ): Promise<EventFormResult> => {
+      if (uploadLock.current)
+        return { ok: false, message: "封面正在上传，请完成后再保存。" };
       try {
         const saved = await action(form);
         if (saved.ok) {
@@ -56,11 +76,13 @@ export function EventForm({ action, event, feedback }: EventFormProps) {
     },
     { ok: false, message: "" },
   );
+  const busy = pending || uploadingCover;
+  const previewCover = coverUrl.trim();
   useEffect(() => {
-    if (!changed && !pending) return;
+    if (!changed && !busy) return;
     const prevent = (event: BeforeUnloadEvent) => event.preventDefault();
     const leave = (event: Event) => {
-      if (pending || !window.confirm("活动还有未保存的修改，确定离开吗？")) {
+      if (busy || !window.confirm("活动还有未保存的修改，确定离开吗？")) {
         event.preventDefault();
         event.stopPropagation();
       }
@@ -102,7 +124,45 @@ export function EventForm({ action, event, feedback }: EventFormProps) {
       window.removeEventListener("community:before-leave", leave);
       document.removeEventListener("click", navigate, true);
     };
-  }, [changed, pending]);
+  }, [changed, busy]);
+
+  async function uploadCover(file: File) {
+    if (uploadLock.current || pending) return;
+    setCoverError("");
+    setCoverAuthRequired(false);
+    if (!file.size || file.size > MAX_SITE_ASSET_BYTES) {
+      setCoverError("图片不能为空，且不能超过 2 MB。");
+      return;
+    }
+    if (
+      !["image/png", "image/jpeg", "image/webp", "image/gif"].includes(
+        file.type,
+      )
+    ) {
+      setCoverError("只支持 PNG、JPEG、WebP 或 GIF 图片。");
+      return;
+    }
+    uploadLock.current = true;
+    setUploadingCover(true);
+    try {
+      const data = new FormData();
+      data.set("file", file);
+      const uploaded = await uploadSiteAssetAction(data);
+      if (uploaded.url) {
+        setCoverUrl(uploaded.url);
+        setFailedCover(null);
+        setChanged(true);
+      } else {
+        setCoverError(uploaded.error ?? "封面上传失败，请重试。");
+        setCoverAuthRequired(Boolean(uploaded.authRequired));
+      }
+    } catch {
+      setCoverError("封面上传失败，请重试。原有内容已保留。");
+    } finally {
+      uploadLock.current = false;
+      setUploadingCover(false);
+    }
+  }
   const defaultStart = new Date(
     shanghaiDayBounds().today.getTime() + 3 * DAY_MS,
   );
@@ -113,7 +173,7 @@ export function EventForm({ action, event, feedback }: EventFormProps) {
       onResetCapture={(event) => event.preventDefault()}
       onChangeCapture={() => setChanged(true)}
     >
-      <fieldset disabled={pending} className="grid min-w-0 gap-6">
+      <fieldset disabled={busy} className="grid min-w-0 gap-6">
         {event ? <input type="hidden" name="eventId" value={event.id} /> : null}
         <div className="grid items-start gap-5 md:grid-cols-2">
           <InputField
@@ -161,6 +221,7 @@ export function EventForm({ action, event, feedback }: EventFormProps) {
           <SelectField
             label="发布状态"
             name="status"
+            disabled={busy}
             onChange={() => setChanged(true)}
             options={{
               DRAFT: "草稿",
@@ -178,6 +239,102 @@ export function EventForm({ action, event, feedback }: EventFormProps) {
             required
           />
         </div>
+        <section className="grid gap-4" aria-labelledby="event-cover-heading">
+          <div>
+            <h2 id="event-cover-heading" className="text-base font-semibold">
+              活动封面
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              用于活动卡片和详情，建议使用 16:9 横图。
+            </p>
+          </div>
+          {previewCover &&
+          isSafeImageSource(previewCover) &&
+          failedCover !== previewCover ? (
+            // eslint-disable-next-line @next/next/no-img-element -- 管理员填写或上传的活动封面预览。
+            <img
+              src={previewCover}
+              alt="活动封面预览"
+              className="aspect-video w-full max-w-lg rounded-xl object-cover"
+              referrerPolicy="no-referrer"
+              onError={() => setFailedCover(previewCover)}
+            />
+          ) : previewCover ? (
+            <p role="status" className="text-sm text-danger">
+              封面无法显示，请检查链接或重新上传。
+            </p>
+          ) : null}
+          <InputField
+            label="封面链接"
+            name="coverUrl"
+            value={coverUrl}
+            disabled={busy}
+            maxLength={2048}
+            placeholder="https://…（可留空）"
+            onChange={(change) => {
+              setCoverUrl(change.target.value);
+              setCoverError("");
+              setCoverAuthRequired(false);
+              setFailedCover(null);
+            }}
+          />
+          <input
+            ref={coverInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            aria-label="活动封面文件"
+            className="hidden"
+            disabled={busy}
+            onChange={(change) => {
+              const file = change.target.files?.[0];
+              change.target.value = "";
+              if (file) void uploadCover(file);
+            }}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              isDisabled={busy}
+              onPress={() => coverInput.current?.click()}
+            >
+              {uploadingCover ? <Spinner size="sm" /> : null}
+              {uploadingCover ? "上传中…" : "上传封面"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              isDisabled={busy || !coverUrl}
+              onPress={() => {
+                setCoverUrl("");
+                setCoverError("");
+                setCoverAuthRequired(false);
+                setFailedCover(null);
+                setChanged(true);
+              }}
+            >
+              移除封面
+            </Button>
+            <span className="text-sm text-muted">
+              PNG / JPEG / WebP / GIF，最大 2 MB
+            </span>
+          </div>
+          {coverError ? (
+            <Notice tone="danger">
+              {coverError}
+              {coverAuthRequired ? (
+                <Link
+                  href="/login"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 block underline"
+                >
+                  在新标签页重新登录
+                </Link>
+              ) : null}
+            </Notice>
+          ) : null}
+        </section>
         <TextAreaField
           label="活动说明"
           name="description"
@@ -238,7 +395,7 @@ export function EventForm({ action, event, feedback }: EventFormProps) {
               ))
             )}
           </div>
-          <ActionButton pendingLabel="保存中…">
+          <ActionButton pendingLabel="保存中…" isDisabled={busy}>
             <Save size={16} />
             {event ? "保存活动" : "创建活动"}
           </ActionButton>

@@ -3,6 +3,11 @@
 @import "./community.css";
 @import "./articles.css";
 @import "./admin-ui.css";
+@import "./glass-cards.css";
+@import "./glass-nav.css";
+@import "./motion.css";
+@import "./player-carousel.css";
+@import "./nav-indicator.css";
 
 @layer base {
   :root {
@@ -10,8 +15,7 @@
   }
   body {
     min-height: 100vh;
-    font-family:
-      "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-family: var(--font-sans);
     background: var(--background);
     color: var(--foreground);
     -webkit-font-smoothing: antialiased;
@@ -39,6 +43,10 @@
   }
 }
 @layer components {
+  /* NextLink does not receive React Aria's data-focus-visible attribute. */
+  a.button:focus-visible {
+    @apply status-focused;
+  }
   .skip-link {
     position: fixed;
     left: 12px;
@@ -47,7 +55,7 @@
     z-index: 100;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
   }
   .skip-link:focus {
     top: 12px;
@@ -78,39 +86,23 @@
   .brand-mark {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: var(--accent-soft);
-    color: var(--accent);
+    width: 2rem;
+    height: 2rem;
     flex-shrink: 0;
     overflow: hidden;
   }
-  .brand > span:last-child {
-    min-width: 0;
-  }
   .brand strong {
     display: block;
-    font-size: 15px;
-    font-weight: 650;
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .brand small {
-    display: block;
-    margin-top: 5px;
-    color: var(--muted);
-    font-size: 7px;
-    letter-spacing: 0.035em;
-    overflow: hidden;
-    white-space: nowrap;
     text-overflow: ellipsis;
   }
   .sidebar-section-label {
     margin: 30px 0 10px;
     padding-inline: 12px;
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .sidebar-nav {
@@ -118,24 +110,10 @@
     gap: 4px;
   }
   .nav-link {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    padding: 11px 12px;
-    margin-block: 3px;
-    border-radius: 10px;
-    color: var(--muted);
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .nav-link:hover {
-    background: var(--surface-secondary);
-    color: var(--foreground);
-  }
-  .nav-link.active {
-    color: var(--accent);
-    background: var(--accent-soft);
-    font-weight: 550;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    margin-block: 0.25rem;
   }
   .nav-link svg {
     flex-shrink: 0;
@@ -162,7 +140,7 @@
     padding-inline: 32px;
     background: var(--surface);
     border-bottom: 1px solid var(--separator);
-    font-size: 13px;
+    font-size: var(--text-sm);
   }
   .admin-location {
     flex: 1;
@@ -172,19 +150,10 @@
     gap: 7px;
     align-items: center;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--text-sm);
   }
   .admin-mobile-navigation {
     display: none;
-  }
-  .admin-page-switch {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 9px 12px;
-    border-radius: 10px;
-    background: var(--surface-secondary);
-    cursor: pointer;
   }
   .page-shell {
     width: min(100% - 64px, 1120px);
@@ -196,21 +165,21 @@
     flex-wrap: wrap;
     align-items: end;
     justify-content: space-between;
-    gap: 18px;
+    gap: 1rem;
     margin-bottom: 28px;
   }
   .page-heading h1 {
-    font-size: clamp(24px, 2.8vw, 30px);
+    font-size: var(--text-2xl);
     line-height: 1.4;
-    font-weight: 650;
+    font-weight: var(--font-weight-semibold);
   }
   .eyebrow {
     margin-bottom: 9px;
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--text-sm);
   }
   .section-title {
-    font-size: 20px;
+    font-size: var(--text-xl);
     line-height: 1.5;
     font-weight: 600;
   }
@@ -228,7 +197,7 @@
     justify-content: center;
     width: 38px;
     height: 38px;
-    border-radius: 10px;
+    border-radius: var(--radius-xl);
     background: var(--surface-secondary);
     color: var(--muted);
   }
@@ -240,8 +209,57 @@
   }
   .event-card {
     height: 100%;
-    gap: 18px;
-    padding: 22px;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  .event-card-image:not(:has(img)) {
+    display: none;
+  }
+  .event-card-description {
+    color: var(--muted);
+  }
+  .event-card-title a:hover {
+    color: var(--accent);
+  }
+  .event-card .event-cover {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+  .event-card-copy {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 1rem;
+    min-width: 0;
+    padding: 1.5rem;
+  }
+  .event-card--featured .event-card-copy {
+    min-height: 14rem;
+  }
+  .event-card--featured .event-card-title {
+    font-size: var(--text-2xl);
+  }
+  .event-card--compact:has(.event-cover) {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+  }
+  .event-card--compact .event-cover {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+  .event-card--compact .event-card-copy {
+    padding: 1rem;
+    gap: 0.5rem;
+  }
+  .event-card--compact .event-card-title {
+    font-size: var(--text-base);
+  }
+  .event-card--compact .event-card-body > div > p {
+    display: none;
   }
   .event-card-header {
     display: flex;
@@ -250,11 +268,11 @@
     gap: 12px;
   }
   .event-card-type {
-    font-size: 12px;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .event-card-title {
-    font-size: 17px;
+    font-size: var(--text-lg);
     line-height: 1.5;
     font-weight: 600;
   }
@@ -262,7 +280,7 @@
     display: flex;
     flex-direction: column;
     flex: 1;
-    gap: 19px;
+    gap: 1rem;
     min-width: 0;
   }
   .event-card-footer {
@@ -270,13 +288,9 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    border-top: 1px solid var(--separator);
-    padding-top: 14px;
-  }
-  .player-card {
-    height: 100%;
-    gap: 17px;
-    padding: 22px;
+    flex-wrap: wrap;
+    font-size: var(--text-sm);
+    color: var(--muted);
   }
   .directory-toolbar {
     display: flex;
@@ -290,25 +304,7 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 4px;
-    padding: 4px;
-    border-radius: 12px;
-    background: var(--surface-secondary);
-  }
-  .filter-link {
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 13px;
-    color: var(--muted);
-    white-space: nowrap;
-  }
-  .filter-link:hover {
-    color: var(--foreground);
-  }
-  .filter-link.active {
-    color: var(--foreground);
-    background: var(--surface);
-    box-shadow: var(--shadow-sm);
+    gap: 0.25rem;
   }
   .directory-search {
     display: flex;
@@ -318,14 +314,6 @@
   }
   .directory-search > div {
     flex: 1;
-  }
-  .directory-search label {
-    font-size: 12px;
-  }
-  .directory-count {
-    margin-bottom: 15px;
-    font-size: 12px;
-    color: var(--muted);
   }
   .form-section {
     display: grid;
@@ -337,13 +325,13 @@
   .form-section > legend {
     float: left;
     width: 100%;
-    font-size: 16px;
+    font-size: var(--text-base);
     font-weight: 600;
   }
   .detail-list {
     display: grid;
     gap: 14px;
-    font-size: 13px;
+    font-size: var(--text-sm);
   }
   .detail-list > div {
     display: flex;
@@ -364,9 +352,12 @@
     align-items: start;
   }
   .event-cover {
-    height: 190px;
-    background-size: cover;
-    background-position: center;
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-height: 28rem;
+    object-fit: cover;
+    background: var(--surface-secondary);
   }
   .registration-panel {
     position: sticky;
@@ -387,13 +378,13 @@
     padding: 14px 0;
     margin-bottom: 24px;
     border-bottom: 1px solid var(--separator);
-    font-size: 13px;
+    font-size: var(--text-sm);
   }
   .profile-section-nav a {
     color: var(--muted);
   }
   .profile-section-nav a:hover {
-    color: var(--accent);
+    color: var(--link);
   }
   .empty-state {
     padding: 38px 24px;
@@ -402,9 +393,9 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    font-size: 13px;
+    font-size: var(--text-sm);
     line-height: 1.6;
-    color: var(--accent);
+    color: var(--link);
   }
   .text-action:hover {
     text-decoration: underline;
@@ -412,18 +403,12 @@
   }
   .section-description {
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--text-sm);
     line-height: 1.8;
     margin-top: 5px;
   }
   .community-account {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    padding: 5px;
-    border-radius: 30px;
-    font-size: 12px;
-    cursor: pointer;
+    gap: 0.5rem;
   }
   .community-account > .account-name {
     max-width: 90px;
@@ -458,10 +443,6 @@
     display: block;
     flex: 1;
   }
-  .admin-header {
-    padding-inline: 22px;
-    gap: 15px;
-  }
 }
 @media (max-width: 700px) {
   .page-shell {
@@ -469,14 +450,15 @@
     padding-block: 24px 40px;
   }
   .brand strong {
-    font-size: 14px;
-  }
-  .brand small {
-    font-size: 6px;
+    font-size: var(--text-sm);
   }
   .brand-mark {
-    width: 32px;
-    height: 32px;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    overflow: hidden;
   }
   .detail-layout,
   .profile-layout {
@@ -487,20 +469,17 @@
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  .event-card,
-  .player-card {
-    padding: 20px;
+  .event-card-copy {
+    padding: 1.25rem;
   }
   .directory-toolbar {
-    gap: 18px;
+    gap: 1rem;
   }
   .directory-filters {
-    max-width: 100%;
-    gap: 2px;
-  }
-  .filter-link {
-    padding: 8px 10px;
-    font-size: 12px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
   }
   .directory-search {
     width: 100%;
@@ -509,25 +488,7 @@
   .registration-panel {
     position: static;
   }
-  .event-cover {
-    height: 160px;
-  }
-  .admin-header {
-    padding-inline: 16px;
-  }
   .admin-back {
-    font-size: 11px;
-  }
-  .admin-page-switch {
-    font-size: 12px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+    font-size: var(--text-sm);
   }
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Header } from "@/components/header";
 import { SiteContentProvider } from "@/components/site-content";
-import { createSiteText, siteThemeStyle } from "@/lib/site-config";
+import { createSiteText } from "@/lib/site-config";
 import { getSiteSettings } from "@/lib/site-settings";
 import "./globals.css";
 
@@ -29,7 +29,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const { configuration } = await getSiteSettings();
   return (
-    <html lang="zh-CN" className="light" style={siteThemeStyle(configuration)}>
+    <html lang="zh-CN" className="light">
       <body>
         <SiteContentProvider configuration={configuration}>
           <Header>{children}</Header>

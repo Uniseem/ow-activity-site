@@ -195,6 +195,7 @@ model Event {
   id             String              @id @default(cuid())
   title          String
   description    String
+  coverUrl       String              @default("")
   type           EventType           @default(FUN)
   customType     String?
   startTime      DateTime

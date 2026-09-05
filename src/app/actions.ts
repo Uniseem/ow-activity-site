@@ -420,6 +420,7 @@ function eventFormInput(formData: FormData) {
       "type",
       "customType",
       "description",
+      "coverUrl",
       "eventDate",
       "signupDeadline",
       "maxParticipants",
@@ -456,7 +457,9 @@ export async function createEventAction(
       message:
         parsed.error === "date"
           ? "请填写有效日期，报名截止日期不得晚于活动日期。"
-          : "活动信息格式有误，请检查必填内容与字数限制。",
+          : parsed.error === "cover"
+            ? "封面链接无效，请使用 HTTP、HTTPS 或本站上传的图片。"
+            : "活动信息格式有误，请检查必填内容与字数限制。",
     };
   const event = await prisma.event.create({
     data: { ...parsed.data, createdById: admin.id },
@@ -496,7 +499,9 @@ export async function updateEventAction(
       message:
         parsed.error === "date"
           ? "请填写有效日期，报名截止日期不得晚于活动日期。"
-          : "活动信息格式有误，请检查必填内容与字数限制。",
+          : parsed.error === "cover"
+            ? "封面链接无效，请使用 HTTP、HTTPS 或本站上传的图片。"
+            : "活动信息格式有误，请检查必填内容与字数限制。",
     };
   await prisma.event.update({ where: { id: eventId }, data: parsed.data });
   revalidatePath("/");

@@ -1,18 +1,17 @@
 import { z } from "zod";
-import type { CSSProperties } from "react";
 import { copyFields } from "@/lib/site-copy";
 
 export const imageFields = [
   {
     key: "logo",
     label: "站点 Logo",
-    description: "导航栏标志，留空时使用默认图标。",
+    description: "显示在站名旁，留空只显示站名。",
     defaultValue: "",
   },
   {
     key: "favicon",
     label: "浏览器标签页图标",
-    description: "建议使用正方形 PNG 图片。",
+    description: "用于浏览器标签页，建议上传正方形 PNG。",
     defaultValue: "/favicon.ico",
   },
   {
@@ -24,7 +23,7 @@ export const imageFields = [
   {
     key: "event",
     label: "活动默认封面",
-    description: "所有活动详情页使用的默认头图。",
+    description: "活动未单独设置封面时使用，显示在活动卡片和详情页。",
     defaultValue: "",
   },
 ] as const;
@@ -32,6 +31,7 @@ export type ImageKey = (typeof imageFields)[number]["key"];
 export type SiteConfiguration = {
   texts: Record<string, string>;
   images: Record<ImageKey, string>;
+  // Retained for stored configuration compatibility; HeroUI owns theme colors.
   accent: string;
 };
 export const defaultSiteConfiguration: SiteConfiguration = {
@@ -45,23 +45,6 @@ const fieldMap = new Map(copyFields.map((field) => [field.key, field]));
 export function createSiteText(configuration: SiteConfiguration) {
   return (key: string): string =>
     configuration.texts[key] ?? fieldMap.get(key)?.defaultValue ?? key;
-}
-export function siteThemeStyle(
-  configuration: SiteConfiguration,
-): CSSProperties {
-  const rgb = configuration.accent
-    .slice(1)
-    .match(/.{2}/g)!
-    .map((value) => parseInt(value, 16));
-  const brightness = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
-  return {
-    "--accent": configuration.accent,
-    "--focus": configuration.accent,
-    "--accent-foreground": brightness > 160 ? "#18181b" : "#ffffff",
-    "--hero-image": configuration.images.hero
-      ? "url(" + JSON.stringify(configuration.images.hero) + ")"
-      : "none",
-  } as CSSProperties;
 }
 export function isSafeImageSource(value: string) {
   if (
@@ -96,9 +79,7 @@ const inputSchema = z
 export function validateSiteConfiguration(input: unknown): SiteConfiguration {
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success)
-    throw new Error(
-      "设置格式有误。文字最多 1000 字，主题色需为六位十六进制颜色。",
-    );
+    throw new Error("设置格式有误。请检查文字长度，或刷新页面后重试。");
   const { texts: inputTexts, images, accent } = parsed.data;
   const texts: Record<string, string> = {};
   for (const [key, value] of Object.entries(inputTexts)) {

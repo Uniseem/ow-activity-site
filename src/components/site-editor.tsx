@@ -1,14 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import Link from "next/link";
-import { Button, Spinner } from "@heroui/react";
-import { ArrowUpRight, Save } from "lucide-react";
-import { InputField, Notice, TextAreaField } from "@/components/ui";
-import { copyFields } from "@/lib/site-copy";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { Accordion, Button, Card, Spinner } from "@heroui/react";
+import { ButtonLink, InputField, Notice, TextAreaField } from "@/components/ui";
+import { editableCopyFields } from "@/lib/site-copy";
 import {
-  defaultSiteConfiguration,
   imageFields,
+  type ImageKey,
   type SiteConfiguration,
 } from "@/lib/site-config";
 import {
@@ -16,7 +14,7 @@ import {
   uploadSiteAssetAction,
 } from "@/app/admin/customize/actions";
 
-const groups = [...new Set(copyFields.map((field) => field.group))];
+const groups = [...new Set(editableCopyFields.map((field) => field.group))];
 
 export function SiteEditor({
   initial,
@@ -61,135 +59,119 @@ export function SiteEditor({
   function updateText(key: string, value: string) {
     setDraft((current) => {
       const texts = { ...current.texts };
-      if (value === copyFields.find((field) => field.key === key)?.defaultValue)
+      if (
+        value ===
+        editableCopyFields.find((field) => field.key === key)?.defaultValue
+      )
         delete texts[key];
       else texts[key] = value;
       return { ...current, texts };
     });
   }
 
+  function textSettings(group: string) {
+    return editableCopyFields
+      .filter((field) => field.group === group)
+      .map((field) => {
+        const multiline =
+          field.key.endsWith("Description") ||
+          field.key.endsWith("description");
+        const Field = multiline ? TextAreaField : InputField;
+        return (
+          <div key={field.key} className={multiline ? "sm:col-span-2" : ""}>
+            <Field
+              label={field.label}
+              value={draft.texts[field.key] ?? field.defaultValue}
+              required={field.required}
+              disabled={busy}
+              maxLength={field.key === "brand.name" ? 40 : 1000}
+              onChange={(event) => updateText(field.key, event.target.value)}
+            />
+          </div>
+        );
+      });
+  }
+
+  function imageSettings(keys: ImageKey[]) {
+    return imageFields
+      .filter((field) => keys.includes(field.key))
+      .map((field) => (
+        <ImageSetting
+          key={field.key}
+          label={field.label}
+          description={field.description}
+          value={draft.images[field.key]}
+          disabled={busy}
+          onChange={(value) =>
+            setDraft((current) => ({
+              ...current,
+              images: { ...current.images, [field.key]: value },
+            }))
+          }
+          onUploadStart={() => setUploadCount((count) => count + 1)}
+          onUploadEnd={() => setUploadCount((count) => count - 1)}
+        />
+      ));
+  }
+
   return (
     <form action={action} className="grid gap-6">
       <input type="hidden" name="configuration" value={JSON.stringify(draft)} />
       <input type="hidden" name="revision" value={state.revision} />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">保存后，网站会立即使用新的设置。</p>
-        <Link
-          href="/"
-          target="_blank"
-          className="flex items-center gap-2 text-sm text-accent"
-        >
+      <div className="flex justify-end">
+        <ButtonLink href="/" target="_blank" variant="ghost">
           查看网站
-          <ArrowUpRight size={15} />
-        </Link>
+        </ButtonLink>
       </div>
-      {groups.map((group) => (
-        <details
-          key={group}
-          open={group === "品牌信息"}
-          className="admin-disclosure rounded-xl border border-border bg-surface px-5"
-        >
-          <summary>{group}</summary>
-          <div className="admin-disclosure-body grid gap-5 sm:grid-cols-2">
-            {copyFields
-              .filter((field) => field.group === group)
-              .map((field) => {
-                const multiline =
-                  field.key.endsWith("Description") ||
-                  field.key.endsWith("description");
-                const Field = multiline ? TextAreaField : InputField;
-                return (
-                  <div
-                    key={field.key}
-                    className={multiline ? "sm:col-span-2" : ""}
-                  >
-                    <Field
-                      label={field.label}
-                      value={draft.texts[field.key] ?? field.defaultValue}
-                      required={field.required}
-                      disabled={busy}
-                      maxLength={field.key === "brand.name" ? 40 : 1000}
-                      onChange={(event) =>
-                        updateText(field.key, event.target.value)
-                      }
-                    />
-                  </div>
-                );
-              })}
-          </div>
-        </details>
-      ))}
-      <details className="admin-disclosure rounded-xl border border-border bg-surface px-5">
-        <summary>品牌图片与主题色</summary>
-        <div className="admin-disclosure-body grid gap-5">
-          <div>
-            <p className="mt-2 text-xs leading-6 text-muted">
-              填写图片链接或直接上传，支持 PNG / JPEG / WebP / GIF，最大 2 MB。
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            {imageFields.map((field) => (
-              <ImageSetting
-                key={field.key}
-                label={field.label}
-                description={field.description}
-                value={draft.images[field.key]}
-                defaultValue={field.defaultValue}
-                disabled={busy}
-                onChange={(value) =>
-                  setDraft((current) => ({
-                    ...current,
-                    images: { ...current.images, [field.key]: value },
-                  }))
-                }
-                onUploadStart={() => setUploadCount((count) => count + 1)}
-                onUploadEnd={() => setUploadCount((count) => count - 1)}
-              />
-            ))}
-          </div>
-          <div className="flex max-w-sm items-end gap-3 border-t border-separator pt-5">
-            <input
-              type="color"
-              aria-label="主题色取色器"
-              value={
-                /^#[0-9a-fA-F]{6}$/.test(draft.accent)
-                  ? draft.accent
-                  : defaultSiteConfiguration.accent
-              }
-              disabled={busy}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  accent: event.target.value,
-                }))
-              }
-              className="h-11 w-14 shrink-0 cursor-pointer rounded-lg border border-border bg-transparent p-1"
-            />
-            <InputField
-              label="主题色"
-              value={draft.accent}
-              disabled={busy}
-              maxLength={7}
-              pattern="#[0-9a-fA-F]{6}"
-              required
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  accent: event.target.value,
-                }))
-              }
-            />
-          </div>
+      <Card className="gap-5 p-5">
+        <h2 className="text-lg font-semibold">品牌信息</h2>
+        <div className="grid gap-5 sm:grid-cols-2">
+          {textSettings("品牌信息")}
         </div>
-      </details>
-      <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
+        <div className="grid gap-6 md:grid-cols-2">
+          {imageSettings(["logo", "favicon"])}
+        </div>
+      </Card>
+      <Accordion allowsMultipleExpanded variant="surface">
+        {groups
+          .filter((group) => group !== "品牌信息")
+          .map((group) => (
+            <Accordion.Item key={group} id={group}>
+              <Accordion.Heading>
+                <Accordion.Trigger>
+                  {group}
+                  <Accordion.Indicator />
+                </Accordion.Trigger>
+              </Accordion.Heading>
+              <Accordion.Panel>
+                <Accordion.Body className="grid gap-5 sm:grid-cols-2">
+                  {textSettings(group)}
+                </Accordion.Body>
+              </Accordion.Panel>
+            </Accordion.Item>
+          ))}
+        <Accordion.Item id="images">
+          <Accordion.Heading>
+            <Accordion.Trigger>
+              可选配图
+              <Accordion.Indicator />
+            </Accordion.Trigger>
+          </Accordion.Heading>
+          <Accordion.Panel>
+            <Accordion.Body className="grid gap-6 md:grid-cols-2">
+              {imageSettings(["hero", "event"])}
+            </Accordion.Body>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
+      <Card className="sticky bottom-4 z-20 flex-row flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1" aria-live="polite">
           {state.message && (!state.ok || !dirty) ? (
             <Notice tone={state.ok ? "success" : "danger"}>
               {state.message}
             </Notice>
           ) : (
-            <p className="text-xs text-muted">
+            <p className="text-sm text-muted">
               {dirty ? "有未保存的修改" : "所有设置已保存"}
             </p>
           )}
@@ -204,15 +186,11 @@ export function SiteEditor({
             撤销修改
           </Button>
           <Button type="submit" isPending={pending} isDisabled={!dirty || busy}>
-            {pending ? (
-              <Spinner size="sm" color="current" />
-            ) : (
-              <Save size={16} />
-            )}
+            {pending ? <Spinner size="sm" color="current" /> : null}
             保存设置
           </Button>
         </div>
-      </div>
+      </Card>
     </form>
   );
 }
@@ -221,7 +199,6 @@ function ImageSetting({
   label,
   description,
   value,
-  defaultValue,
   onChange,
   onUploadStart,
   onUploadEnd,
@@ -230,7 +207,6 @@ function ImageSetting({
   label: string;
   description: string;
   value: string;
-  defaultValue: string;
   onChange: (value: string) => void;
   onUploadStart: () => void;
   onUploadEnd: () => void;
@@ -239,10 +215,11 @@ function ImageSetting({
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [failedSource, setFailedSource] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   return (
-    <div className="grid min-w-0 content-start gap-3 rounded-xl border border-border p-4">
+    <section className="grid min-w-0 content-start gap-3">
       <h3 className="text-sm font-semibold">{label}</h3>
-      <p className="text-xs leading-6 text-muted">{description}</p>
+      <p className="text-sm leading-6 text-muted">{description}</p>
       {value && value !== failedSource ? (
         // eslint-disable-next-line @next/next/no-img-element -- Preview admin-selected assets directly.
         <img
@@ -252,7 +229,7 @@ function ImageSetting({
           className="h-24 w-full rounded-lg bg-surface-secondary object-contain"
         />
       ) : (
-        <div className="grid h-24 place-items-center rounded-lg bg-surface-secondary text-xs text-muted">
+        <div className="grid h-24 place-items-center rounded-lg bg-surface-secondary text-sm text-muted">
           {value ? "图片无法加载，请检查链接" : "未设置图片"}
         </div>
       )}
@@ -267,12 +244,13 @@ function ImageSetting({
           onChange(event.target.value);
         }}
       />
-      <InputField
-        label={label + "上传"}
+      <input
+        ref={fileInput}
+        aria-label={label + "文件"}
         type="file"
         accept="image/png,image/jpeg,image/webp,image/gif"
         disabled={disabled}
-        className="text-xs"
+        className="hidden"
         onChange={async (event) => {
           const file = event.target.files?.[0];
           event.target.value = "";
@@ -298,22 +276,42 @@ function ImageSetting({
           }
         }}
       />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          aria-label={"上传" + label}
+          isDisabled={disabled}
+          onPress={() => fileInput.current?.click()}
+        >
+          上传图片
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          aria-label={"清除" + label}
+          isDisabled={disabled || !value}
+          onPress={() => {
+            setError("");
+            setFailedSource(null);
+            onChange("");
+          }}
+        >
+          清除
+        </Button>
+        <span className="text-sm text-muted">
+          PNG / JPEG / WebP / GIF，最大 2 MB
+        </span>
+      </div>
       {uploading ? (
-        <span className="flex items-center gap-2 text-xs text-muted">
+        <span className="flex items-center gap-2 text-sm text-muted">
           <Spinner size="sm" />
           正在上传…
         </span>
       ) : null}
       {error ? <Notice tone="danger">{error}</Notice> : null}
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        isDisabled={disabled || value === defaultValue}
-        onPress={() => onChange(defaultValue)}
-      >
-        恢复默认图片
-      </Button>
-    </div>
+    </section>
   );
 }

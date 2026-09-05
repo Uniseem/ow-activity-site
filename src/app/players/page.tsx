@@ -1,8 +1,9 @@
-import { Search, Users } from "lucide-react";
+import { Search } from "lucide-react";
+import { buttonVariants } from "@heroui/react";
 import Link from "next/link";
 import { PlayerCard } from "@/components/profile-card";
 import { EmptyState, PageHeading } from "@/components/page-heading";
-import { Button, ButtonLink, Chip, InputField } from "@/components/ui";
+import { Button, ButtonLink, InputField } from "@/components/ui";
 import { getPublicProfiles } from "@/lib/data";
 import { roleLabels } from "@/lib/format";
 
@@ -29,16 +30,7 @@ export default async function PlayersPage({
   );
   return (
     <main className="page-shell">
-      <PageHeading
-        title="交大玩家"
-        description="按位置或常用英雄寻找同校队友。"
-        action={
-          <Chip variant="secondary">
-            <Users size={14} />
-            {allProfiles.length} 位玩家
-          </Chip>
-        }
-      />
+      <PageHeading title="玩家" />
       <div className="directory-toolbar">
         <nav aria-label="玩家位置筛选" className="directory-filters">
           {Object.entries({ all: "全部位置", ...roleLabels }).map(
@@ -51,7 +43,9 @@ export default async function PlayersPage({
                   key={value}
                   href={`/players${params.size ? "?" + params.toString() : ""}`}
                   aria-current={role === value ? "page" : undefined}
-                  className={`filter-link ${role === value ? "active" : ""}`}
+                  className={buttonVariants({
+                    variant: role === value ? "secondary" : "ghost",
+                  })}
                 >
                   {label}
                 </Link>
@@ -74,10 +68,6 @@ export default async function PlayersPage({
           </Button>
         </form>
       </div>
-      <p className="directory-count">
-        {q ? `“${q}” · ` : ""}
-        {profiles.length} 位社区玩家
-      </p>
       {profiles.length ? (
         <div className="player-grid">
           {profiles.map((profile) => (
@@ -86,11 +76,11 @@ export default async function PlayersPage({
         </div>
       ) : (
         <EmptyState
-          title={q || role !== "all" ? "暂时没有匹配的玩家" : "队友们正在集结"}
+          title={q || role !== "all" ? "没有匹配的玩家" : "暂无玩家"}
           description={
             q || role !== "all"
               ? "试试其他关键词或位置。"
-              : "完善你的玩家卡片，审核通过后就能在这里与大家见面。"
+              : "资料通过审核后会公开展示。"
           }
           action={
             <ButtonLink

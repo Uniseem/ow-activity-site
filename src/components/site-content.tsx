@@ -1,8 +1,9 @@
 "use client";
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import {
   createSiteText,
   defaultSiteConfiguration,
+  isSafeImageSource,
   type SiteConfiguration,
 } from "@/lib/site-config";
 
@@ -37,24 +38,34 @@ export function SiteLogo() {
     />
   ) : null;
 }
-export function SiteCover() {
+export function SiteCover({
+  src,
+  className = "",
+  alt = "活动封面",
+}: {
+  src?: string | null;
+  className?: string;
+  alt?: string;
+}) {
   const config = useSiteConfiguration();
-  if (
-    !config.images.event ||
-    ["/arena-v2.webp", "/arena-cover.png"].includes(config.images.event)
+  const [failedSource, setFailedSource] = useState("");
+  const fallback = ["/arena-v2.webp", "/arena-cover.png"].includes(
+    config.images.event,
   )
+    ? ""
+    : config.images.event;
+  const source = src?.trim() || fallback;
+  if (!source || !isSafeImageSource(source) || source === failedSource)
     return null;
   return (
-    <div
-      className="event-cover"
-      style={{
-        backgroundImage: config.images.event
-          ? "url(" + JSON.stringify(config.images.event) + ")"
-          : undefined,
-        backgroundColor: "#24262f",
-      }}
-      role="img"
-      aria-label="活动封面"
+    // eslint-disable-next-line @next/next/no-img-element -- 管理员设置的活动封面。
+    <img
+      src={source}
+      className={"event-cover " + className}
+      alt={alt}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailedSource(source)}
     />
   );
 }

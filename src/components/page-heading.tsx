@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui";
-import { Inbox } from "lucide-react";
 
 export function PageHeading({
   eyebrow,
@@ -35,16 +34,15 @@ export function EmptyState({
   action,
 }: {
   title: string;
-  description: string;
+  description?: string;
   action?: ReactNode;
 }) {
   return (
-    <Card className="empty-state items-center gap-3 text-center shadow-none">
-      <span className="icon-tile mb-2">
-        <Inbox size={22} aria-hidden="true" />
-      </span>
+    <Card className="empty-state items-center gap-3 text-center">
       <h2 className="text-lg font-semibold">{title}</h2>
-      <p className="max-w-md text-sm leading-6 text-muted">{description}</p>
+      {description ? (
+        <p className="max-w-md text-sm leading-6 text-muted">{description}</p>
+      ) : null}
       {action ? <div className="mt-3">{action}</div> : null}
     </Card>
   );

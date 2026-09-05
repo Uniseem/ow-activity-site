@@ -2,10 +2,13 @@
   .article-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 28px;
+    gap: 1.25rem;
   }
   .article-card {
     min-width: 0;
+  }
+  .article-card > .card {
+    padding: 0;
   }
   .article-card-cover {
     display: flex;
@@ -15,13 +18,11 @@
     justify-content: center;
     aspect-ratio: 16 / 9;
     overflow: hidden;
-    background: #eee6e0;
-    color: var(--accent);
-    border-radius: 10px;
+    background: var(--surface-secondary);
+    color: var(--link);
   }
-  .article-card-cover span {
-    font-size: 11px;
-    letter-spacing: 0.1em;
+  .article-card-cover:not(:has(img)) {
+    display: none;
   }
   .article-card-cover img {
     width: 100%;
@@ -29,7 +30,39 @@
     object-fit: cover;
   }
   .article-card-copy {
-    padding-block: 19px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    gap: 0.75rem;
+  }
+  .article-card--featured .article-card-copy {
+    min-height: 14rem;
+  }
+  .article-card.article-card--featured h2 {
+    font-size: var(--text-2xl);
+  }
+  .article-card--compact .card:has(.article-card-cover img) {
+    display: grid;
+    grid-template-columns: 7rem minmax(0, 1fr);
+  }
+  .article-card--compact .article-card-copy {
+    padding: 1rem;
+  }
+  .article-card--compact .article-card-cover {
+    height: 100%;
+    aspect-ratio: auto;
+    min-height: 7rem;
+  }
+  .article-card.article-card--compact h2 {
+    font-size: var(--text-base);
+  }
+  .article-card--compact .article-card-excerpt {
+    -webkit-line-clamp: 1;
+  }
+  .article-card .article-meta {
+    margin-top: auto;
   }
   .article-meta {
     display: flex;
@@ -37,21 +70,21 @@
     flex-wrap: wrap;
     gap: 9px;
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--text-sm);
     line-height: 1.8;
   }
   .article-card h2 {
-    font-size: 21px;
+    font-size: var(--text-lg);
     line-height: 1.5;
-    font-weight: 650;
-    margin-top: 10px;
+    font-weight: var(--font-weight-semibold);
+    margin: 0;
   }
   .article-card h2 a:hover {
-    color: var(--accent);
+    color: var(--link);
   }
   .article-card-excerpt {
-    margin-top: 11px;
-    font-size: 13px;
+    margin: 0;
+    font-size: var(--text-sm);
     line-height: 1.9;
     color: var(--muted);
     display: -webkit-box;
@@ -61,7 +94,7 @@
   }
   .article-card .text-action {
     margin-top: 18px;
-    color: var(--accent);
+    color: var(--link);
   }
   .article-search {
     display: flex;
@@ -79,10 +112,10 @@
     gap: 20px;
     align-items: center;
     margin-top: 35px;
-    font-size: 13px;
+    font-size: var(--text-sm);
   }
   .article-pagination a {
-    color: var(--accent);
+    color: var(--link);
     padding: 8px 0;
   }
   .community-site .article-reading {
@@ -92,18 +125,17 @@
     margin-block: 40px 30px;
   }
   .article-reading-header h1 {
-    font-size: clamp(29px, 4vw, 43px);
+    font-size: var(--text-3xl);
     line-height: 1.4;
-    font-weight: 750;
+    font-weight: var(--font-weight-semibold);
     margin-block: 18px;
-    letter-spacing: -0.035em;
   }
   .article-reading-header .article-meta {
-    font-size: 12px;
+    font-size: var(--text-sm);
   }
   .article-deck {
     margin-top: 23px;
-    font-size: 15px;
+    font-size: var(--text-base);
     line-height: 1.9;
     color: var(--muted);
     border-left: 3px solid var(--accent);
@@ -114,7 +146,7 @@
     width: 100%;
     max-height: 480px;
     object-fit: cover;
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     margin-bottom: 34px;
   }
   .article-reading-end {
@@ -125,11 +157,11 @@
     justify-content: space-between;
     gap: 20px;
     flex-wrap: wrap;
-    font-size: 12px;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .article-prose {
-    font-size: 16px;
+    font-size: var(--text-base);
     line-height: 1.9;
     color: var(--foreground);
     overflow-wrap: anywhere;
@@ -167,7 +199,7 @@
     font-style: italic;
   }
   .article-prose a {
-    color: var(--accent);
+    color: var(--link);
     text-decoration: underline;
     text-underline-offset: 3px;
   }
@@ -198,22 +230,22 @@
     color: var(--muted);
   }
   .article-prose pre {
-    background: #22262b;
-    color: #eceff4;
+    background: var(--default);
+    color: var(--default-foreground);
     padding: 20px;
-    border-radius: 9px;
+    border-radius: var(--radius-lg);
     overflow-x: auto;
     line-height: 1.7;
-    font-size: 13px;
+    font-size: var(--text-sm);
     margin-block: 1.5em;
     white-space: pre;
   }
   .article-prose code {
-    font-family: Consolas, monospace;
+    font-family: var(--font-mono);
     font-size: 0.88em;
     background: var(--surface-secondary);
     padding: 0.15em 0.35em;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
   }
   .article-prose pre code {
     background: transparent;
@@ -230,7 +262,7 @@
     max-width: 100%;
     height: auto;
     margin: 1.5em auto;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     display: block;
   }
   .article-table-scroll {
@@ -241,7 +273,7 @@
     border-collapse: collapse;
     min-width: 100%;
     table-layout: auto;
-    font-size: 14px;
+    font-size: var(--text-sm);
   }
   .article-prose td,
   .article-prose th {
@@ -253,7 +285,7 @@
   }
   .article-prose th {
     background: var(--surface-secondary);
-    font-weight: 650;
+    font-weight: var(--font-weight-semibold);
   }
   .article-prose .contains-task-list,
   .article-prose ul[data-type="taskList"] {
@@ -275,11 +307,11 @@
     flex: 1;
   }
   .article-prose :is(input[type="checkbox"]) {
-    accent-color: var(--accent);
+    accent-color: var(--link);
   }
   .admin-article-list {
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius-3xl);
     background: var(--surface);
     overflow: hidden;
   }
@@ -298,13 +330,13 @@
     flex: 1;
   }
   .admin-article-list h2 {
-    font-size: 16px;
+    font-size: var(--text-base);
     font-weight: 600;
   }
   .admin-article-list p {
     margin-top: 8px;
     color: var(--muted);
-    font-size: 11px;
+    font-size: var(--text-sm);
   }
   .admin-article-list .icon-tile {
     flex-shrink: 0;
@@ -319,11 +351,11 @@
   }
   .article-workspace-heading .text-action {
     justify-self: start;
-    font-size: 13px;
+    font-size: var(--text-sm);
   }
   .article-workspace-heading h1 {
-    font-size: 26px;
-    font-weight: 650;
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-semibold);
   }
   .article-command-bar {
     position: sticky;
@@ -331,9 +363,9 @@
     z-index: 20;
     padding: 17px 20px;
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     background: var(--surface);
-    box-shadow: 0 3px 10px #00000006;
+    box-shadow: var(--surface-shadow);
   }
   .article-command-main {
     display: flex;
@@ -349,7 +381,7 @@
   }
   .article-save-state p,
   .article-save-state > span:last-child {
-    font-size: 12px;
+    font-size: var(--text-sm);
     line-height: 1.7;
     color: var(--muted);
   }
@@ -366,7 +398,7 @@
     margin-top: 12px;
     padding-top: 12px;
     border-top: 1px solid var(--border);
-    font-size: 13px;
+    font-size: var(--text-sm);
     line-height: 1.7;
   }
   .article-action-feedback svg {
@@ -378,30 +410,28 @@
   }
   .article-recovery-card {
     padding: 20px;
-    border: 1px solid var(--border);
     gap: 16px;
-    box-shadow: none;
   }
   .article-recovery-card h2 {
-    font-size: 15px;
-    font-weight: 650;
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-semibold);
   }
   .article-recovery-card p {
     margin-top: 8px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: var(--text-sm);
     line-height: 1.8;
   }
   .article-action-feedback.is-success {
-    color: var(--success);
+    color: var(--success-soft-foreground);
   }
   .article-action-feedback.is-error {
-    color: var(--danger);
+    color: var(--danger-soft-foreground);
   }
   .article-optional-settings {
     border: 1px solid var(--border);
     background: var(--surface);
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
   }
   .article-optional-settings summary {
     display: flex;
@@ -409,8 +439,8 @@
     gap: 10px;
     padding: 19px 22px;
     cursor: pointer;
-    font-size: 14px;
-    font-weight: 550;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
     list-style: none;
   }
   .article-optional-settings summary::-webkit-details-marker {
@@ -418,7 +448,7 @@
   }
   .article-optional-settings summary span {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--text-sm);
     font-weight: 400;
   }
   .article-optional-settings summary svg {
@@ -440,7 +470,7 @@
     align-content: start;
   }
   .article-word-count {
-    font-size: 11px;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .article-editor-main {
@@ -450,20 +480,10 @@
   }
   .article-editor-title {
     padding: 22px;
-    border: 1px solid var(--border);
-    box-shadow: none;
-  }
-  .article-editor-title input {
-    font-size: 21px;
-    font-weight: 600;
-    height: auto;
-    padding-block: 14px;
   }
   .article-editor-body {
     padding: 0;
     gap: 0;
-    border: 1px solid var(--border);
-    box-shadow: none;
     overflow: clip;
   }
   .article-editor-tabs {
@@ -487,12 +507,9 @@
     border-bottom: 1px solid var(--border);
     background: var(--surface);
   }
-  .editor-toolbar button {
-    border-radius: 7px;
-  }
   .editor-toolbar button[aria-pressed="true"] {
-    color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 10%, white);
+    color: var(--accent-soft-foreground);
+    background: var(--accent-soft);
   }
   .editor-table-tools {
     display: flex;
@@ -506,7 +523,7 @@
     outline: none;
   }
   .article-editable:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    outline: 2px solid var(--focus);
     outline-offset: -2px;
   }
   .article-editable table {
@@ -517,16 +534,16 @@
     min-width: 0;
   }
   .article-editable .selectedCell {
-    background: color-mix(in srgb, var(--accent) 10%, white);
+    background: var(--accent-soft);
   }
   .article-editable .ProseMirror-selectednode {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--focus);
   }
   .editor-loading {
     min-height: 500px;
     display: grid;
     place-items: center;
-    font-size: 13px;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .markdown-edit-pane {
@@ -535,7 +552,7 @@
   .markdown-edit-pane label {
     display: block;
     margin-bottom: 12px;
-    font-size: 12px;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .markdown-edit-pane textarea {
@@ -544,9 +561,9 @@
     resize: vertical;
     border: 1px solid var(--border);
     padding: 18px;
-    border-radius: 8px;
-    font-family: Consolas, monospace;
-    font-size: 14px;
+    border-radius: var(--radius-lg);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
     line-height: 1.8;
     background: var(--field-background);
   }
@@ -555,7 +572,7 @@
     min-height: 500px;
   }
   .article-editor-preview > h1 {
-    font-size: 32px;
+    font-size: var(--text-3xl);
     line-height: 1.5;
     font-weight: 700;
     margin-bottom: 20px;
@@ -564,7 +581,7 @@
     max-height: 320px;
     width: 100%;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     margin-block: 25px;
   }
   .article-editor-preview .article-deck {
@@ -577,17 +594,17 @@
     justify-content: space-between;
     gap: 10px;
     flex-wrap: wrap;
-    font-size: 10px;
+    font-size: var(--text-sm);
     color: var(--muted);
   }
   .article-cover-preview {
     width: 100%;
     aspect-ratio: 16 / 9;
     object-fit: cover;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
   }
 }
-@media (max-width: 950px) {
+@media (max-width: 1100px) {
   .article-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
@@ -636,7 +653,7 @@
     min-height: 350px;
   }
   .article-editor-preview > h1 {
-    font-size: 26px;
+    font-size: var(--text-2xl);
   }
   .admin-article-list > article {
     gap: 12px;
@@ -653,7 +670,7 @@
     margin-left: auto;
   }
   .article-prose {
-    font-size: 15px;
+    font-size: var(--text-base);
   }
   .article-reading-header {
     margin-top: 30px;
@@ -662,11 +679,11 @@
     max-width: none;
   }
 }
-@media (max-width: 550px) {
+@media (max-width: 700px) {
   .article-grid {
     grid-template-columns: 1fr;
   }
   .article-card-copy {
-    padding-block: 17px;
+    padding: 1.25rem;
   }
 }

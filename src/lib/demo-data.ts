@@ -9,6 +9,7 @@ const nextFriday = new Date(nextSaturday.getTime() - 1);
 export const demoEvents = [
   {
     id: "demo-weekend-scrim",
+    coverUrl: "",
     title: "周末内战",
     description: "轻松组队，按报名位置做基础平衡，优先照顾能全程语音的玩家。",
     type: "SCRIM",
@@ -24,6 +25,7 @@ export const demoEvents = [
   },
   {
     id: "demo-custom-night",
+    coverUrl: "",
     title: "自定义娱乐房",
     description: "快速模式规则混合英雄限制，适合新朋友一起熟悉队伍节奏。",
     type: "CUSTOM",

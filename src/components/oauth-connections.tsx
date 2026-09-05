@@ -12,7 +12,7 @@ export async function OAuthConnections({ userId }: { userId: string }) {
     }),
   ]);
   return (
-    <Card className="gap-4 border border-border p-6 shadow-none">
+    <Card className="gap-4 p-6">
       <div>
         <h2 className="text-lg font-semibold">登录方式</h2>
         <p className="mt-2 text-sm leading-6 text-muted">

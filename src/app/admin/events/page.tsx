@@ -106,7 +106,7 @@ export default async function AdminEventsPage({
         </form>
       </div>
       {events.length ? (
-        <Card className="gap-0 overflow-hidden border border-border p-0 shadow-none">
+        <Card className="gap-0 overflow-hidden p-0">
           {events.map((event) => {
             const pending = event.registrations.filter(
               (item) => item.status === "PENDING",

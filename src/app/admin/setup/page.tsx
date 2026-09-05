@@ -13,7 +13,7 @@ export default async function AdminSetupPage() {
 
   return (
     <main className="page-shell">
-      <Card className="mx-auto max-w-lg gap-7 border border-border p-6 shadow-none sm:p-9">
+      <Card className="mx-auto max-w-lg gap-7 p-6 sm:p-9">
         <div>
           <span className="icon-tile">
             <ShieldCheck size={24} />

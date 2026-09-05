@@ -118,7 +118,7 @@ export default async function AdminEventPage({
           </Notice>
         ) : null}
         {settingsOpen ? (
-          <Card className="gap-6 border border-border p-6 shadow-none sm:p-8">
+          <Card className="gap-6 p-6 sm:p-8">
             <div className="flex items-center justify-between gap-3">
               <h2 className="section-title">活动设置</h2>
               <StatusChip
@@ -186,7 +186,7 @@ export default async function AdminEventPage({
                         return (
                           <Card
                             key={registration.id}
-                            className="grid gap-5 border border-border p-6 shadow-none lg:grid-cols-[1fr_210px]"
+                            className="grid gap-5 p-6 lg:grid-cols-[1fr_210px]"
                           >
                             <div className="flex min-w-0 gap-4">
                               <Avatar src={profile?.avatarUrl} name={name} />

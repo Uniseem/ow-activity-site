@@ -26,16 +26,20 @@ export function ButtonLink({
   variant = "primary",
   size = "md",
   className = "",
+  target,
 }: {
   href: string;
   children: ReactNode;
   variant?: ComponentProps<typeof Button>["variant"];
   size?: "sm" | "md" | "lg";
   className?: string;
+  target?: ComponentProps<typeof NextLink>["target"];
 }) {
   return (
     <NextLink
       href={href}
+      target={target}
+      rel={target === "_blank" ? "noopener noreferrer" : undefined}
       className={buttonVariants({ variant, size, className })}
     >
       {children}
@@ -244,7 +248,6 @@ export function StatusChip({
           : "default";
   return (
     <Chip color={color} variant="soft" size="sm" className={className}>
-      <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
       {label}
     </Chip>
   );

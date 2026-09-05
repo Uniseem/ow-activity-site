@@ -1,11 +1,11 @@
-/* eslint-disable @next/next/no-img-element -- 配图地址来自管理员上传或填写 */
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui";
+import { CoverImage } from "@/components/cover-image";
 import { articleDate, safeArticleUrl } from "@/lib/article-input";
 
 export function ArticleCard({
   article,
+  variant = "default",
 }: {
   article: {
     id: string;
@@ -15,42 +15,36 @@ export function ArticleCard({
     publishedAt: Date | null;
     author: { profile: { displayName: string } | null };
   };
+  variant?: "default" | "featured" | "compact";
 }) {
   const cover = safeArticleUrl(article.coverUrl, true);
   return (
-    <article className="article-card">
-      <Card className="h-full gap-0 overflow-hidden p-0">
+    <article className={`article-card article-card--${variant}`}>
+      <Card className="cover-glass-card h-full gap-0 overflow-hidden">
         {cover ? (
           <Link
             href={`/articles/${article.id}`}
-            className="article-card-cover"
+            className="article-card-cover cover-glass-image"
             tabIndex={-1}
             aria-hidden="true"
           >
-            <img
-              src={cover}
-              alt=""
-              loading="lazy"
-              referrerPolicy="no-referrer"
-            />
+            <CoverImage src={cover} alt="" />
           </Link>
         ) : null}
-        <div className="article-card-copy">
-          <p className="article-meta">
-            {articleDate(article.publishedAt)}
-            <span>·</span>
-            {article.author.profile?.displayName || "社区编辑"}
-          </p>
+        <div className="article-card-copy cover-glass-panel">
           <h2>
             <Link href={`/articles/${article.id}`}>{article.title}</Link>
           </h2>
           {article.excerpt ? (
             <p className="article-card-excerpt">{article.excerpt}</p>
           ) : null}
-          <Link href={`/articles/${article.id}`} className="text-action">
-            阅读文章
-            <ArrowRight size={15} />
-          </Link>
+          <p className="article-meta">
+            <time dateTime={article.publishedAt?.toISOString()}>
+              {articleDate(article.publishedAt)}
+            </time>
+            <span>·</span>
+            {article.author.profile?.displayName || "社区编辑"}
+          </p>
         </div>
       </Card>
     </article>

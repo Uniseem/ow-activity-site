@@ -1,8 +1,9 @@
-import { CalendarDays, Search } from "lucide-react";
+import { Search } from "lucide-react";
+import { buttonVariants } from "@heroui/react";
 import Link from "next/link";
 import { EventCard } from "@/components/event-card";
 import { EmptyState, PageHeading } from "@/components/page-heading";
-import { Button, ButtonLink, Chip, InputField } from "@/components/ui";
+import { Button, ButtonLink, InputField } from "@/components/ui";
 import { getPublicEvents } from "@/lib/data";
 import { eventTypeLabel } from "@/lib/format";
 
@@ -50,16 +51,7 @@ export default async function EventsPage({
     );
   return (
     <main className="page-shell">
-      <PageHeading
-        title="社区活动"
-        description="查看活动安排、报名状态与往期记录。日期均为上海时间。"
-        action={
-          <Chip variant="secondary">
-            <CalendarDays size={14} />
-            {allEvents.length} 场活动
-          </Chip>
-        }
-      />
+      <PageHeading title="活动" />
       <div className="directory-toolbar">
         <nav aria-label="活动状态筛选" className="directory-filters">
           {filters.map((filter) => {
@@ -71,14 +63,11 @@ export default async function EventsPage({
                 key={filter.id}
                 href={`/events${params.size ? "?" + params.toString() : ""}`}
                 aria-current={filter.id === status ? "page" : undefined}
-                className={`filter-link ${filter.id === status ? "active" : ""}`}
+                className={buttonVariants({
+                  variant: filter.id === status ? "secondary" : "ghost",
+                })}
               >
                 {filter.label}
-                <span className="ml-2 text-[10px] opacity-60">
-                  {filter.id === "all"
-                    ? allEvents.length
-                    : allEvents.filter((e) => e.status === filter.id).length}
-                </span>
               </Link>
             );
           })}
@@ -98,13 +87,6 @@ export default async function EventsPage({
           </Button>
         </form>
       </div>
-      <p className="directory-count">
-        {q ? `“${q}” · ` : ""}共 {events.length} 场
-        {status === "all"
-          ? "活动"
-          : filters.find((f) => f.id === status)?.label + "活动"}{" "}
-        · 日期均为上海时间
-      </p>
       {events.length ? (
         <div className="event-grid">
           {events.map((event) => (
@@ -113,16 +95,16 @@ export default async function EventsPage({
         </div>
       ) : (
         <EmptyState
-          title={q ? "没有找到匹配的活动" : "这个分类还没有活动"}
+          title={q || status !== "all" ? "没有匹配的活动" : "暂无活动"}
           description={
-            q
-              ? "试试其他关键词，或返回全部活动。"
-              : "新的活动发布后会展示在这里，也可以先看看其他活动。"
+            q || status !== "all" ? "试试其他关键词或分类。" : undefined
           }
           action={
-            <ButtonLink href="/events" variant="secondary">
-              查看全部活动
-            </ButtonLink>
+            q || status !== "all" ? (
+              <ButtonLink href="/events" variant="secondary">
+                查看全部活动
+              </ButtonLink>
+            ) : undefined
           }
         />
       )}

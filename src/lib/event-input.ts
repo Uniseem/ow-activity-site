@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseShanghaiDate, scheduledEventStatus } from "@/lib/event-date";
+import { isSafeImageSource } from "@/lib/site-config";
 
 export const eventInputSchema = z
   .object({
@@ -7,6 +8,7 @@ export const eventInputSchema = z
     type: z.enum(["SCRIM", "FUN", "TRAINING", "WATCH", "CUSTOM"]),
     customType: z.string().trim().max(30),
     description: z.string().trim().min(6).max(1000),
+    coverUrl: z.string().trim().max(2048).refine(isSafeImageSource).default(""),
     eventDate: z.string(),
     signupDeadline: z.string(),
     maxParticipants: z.coerce.number().int().min(2).max(60),
@@ -21,7 +23,13 @@ export const eventInputSchema = z
 
 export function parseEventInput(input: unknown, now = new Date()) {
   const parsed = eventInputSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "invalid" } as const;
+  if (!parsed.success)
+    return {
+      ok: false,
+      error: parsed.error.issues.some((issue) => issue.path[0] === "coverUrl")
+        ? "cover"
+        : "invalid",
+    } as const;
   const {
     eventDate,
     signupDeadline: deadline,

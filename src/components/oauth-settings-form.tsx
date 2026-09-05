@@ -58,7 +58,7 @@ export function OAuthSettingsForm({
     clearSecret ||
     enabled !== state.enabled;
   return (
-    <Card className="gap-4 border border-border p-6 shadow-none">
+    <Card className="gap-4 p-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="section-title">{name} 登录</h2>
         <Chip color={state.enabled ? "success" : "default"} variant="soft">

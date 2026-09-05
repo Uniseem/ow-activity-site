@@ -24,7 +24,7 @@
   align-items: center;
   gap: 1rem;
   margin-top: 1.25rem;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--muted);
 }
 .admin-disclosure > summary {
@@ -35,7 +35,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 0;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   font-weight: 500;
 }
 .admin-disclosure > summary::-webkit-details-marker {
@@ -51,9 +51,9 @@
   content: "−";
 }
 .admin-disclosure > summary:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 4px;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
 }
 .admin-disclosure > .admin-disclosure-body {
   padding: 0 0 1rem;

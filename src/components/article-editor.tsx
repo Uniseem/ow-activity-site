@@ -100,6 +100,8 @@ export function ArticleEditor({
   const [mode, setMode] = useState<"rich" | "markdown" | "preview">("rich");
   const [pending, startTransition] = useTransition();
   const [uploading, setUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [showCoverLink, setShowCoverLink] = useState(false);
   const [savingStatus, setSavingStatus] = useState<
     "DRAFT" | "PUBLISHED" | null
   >(null);
@@ -411,14 +413,17 @@ export function ArticleEditor({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   async function uploadCover(file?: File) {
-    if (!file || busy) return;
+    if (!file || blocked) return;
+    setCoverUploading(true);
     setUploading(true);
     try {
       const data = new FormData();
       data.set("file", file);
       const response = await uploadSiteAssetAction(data);
-      if (response.url) update("coverUrl", response.url);
-      else
+      if (response.url) {
+        update("coverUrl", response.url);
+        setResult({ ok: true, message: "封面已上传，请保存文章。" });
+      } else
         setResult({
           ok: false,
           message: response.error || "上传失败。",
@@ -427,6 +432,7 @@ export function ArticleEditor({
     } catch {
       setResult({ ok: false, message: "封面上传失败，请稍后重试。" });
     } finally {
+      setCoverUploading(false);
       setUploading(false);
       if (coverRef.current) coverRef.current.value = "";
     }
@@ -643,6 +649,77 @@ export function ArticleEditor({
             onChange={(event) => update("title", event.target.value)}
           />
         </Card>
+        <Card className="gap-4" aria-label="文章封面">
+          <h2 className="font-semibold">文章封面</h2>
+          <div
+            className={
+              cover
+                ? "grid gap-4 sm:grid-cols-[240px_minmax(0,1fr)]"
+                : "grid gap-4"
+            }
+          >
+            {cover ? (
+              <img
+                className="aspect-video w-full rounded-lg object-cover"
+                src={cover}
+                alt="文章封面预览"
+                referrerPolicy="no-referrer"
+              />
+            ) : null}
+            <div className="grid content-start gap-3">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  isDisabled={blocked}
+                  isPending={coverUploading}
+                  onPress={() => coverRef.current?.click()}
+                >
+                  <Upload size={15} />
+                  {cover ? "更换封面" : "上传封面"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  isDisabled={blocked}
+                  aria-expanded={showCoverLink}
+                  aria-controls="article-cover-link"
+                  onPress={() => setShowCoverLink((value) => !value)}
+                >
+                  使用图片链接
+                </Button>
+                {draft.coverUrl ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    isDisabled={blocked}
+                    onPress={() => update("coverUrl", "")}
+                  >
+                    移除封面
+                  </Button>
+                ) : null}
+              </div>
+              <p className="text-sm text-muted">
+                选填，支持 PNG、JPEG、WebP 或 GIF，最大 2 MB。
+              </p>
+              {showCoverLink ? (
+                <div id="article-cover-link">
+                  <InputField
+                    label="封面图片链接"
+                    value={draft.coverUrl}
+                    disabled={blocked}
+                    maxLength={2048}
+                    placeholder="https://…"
+                    onChange={(event) => update("coverUrl", event.target.value)}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </Card>
         <Card className="article-editor-body">
           <div className="article-editor-tabs">
             <div role="group" aria-label="编辑模式">
@@ -720,10 +797,10 @@ export function ArticleEditor({
         </Card>
         <details className="article-optional-settings">
           <summary>
-            封面与摘要 <span>选填</span>
+            文章摘要 <span>选填</span>
             <ChevronDown size={16} />
           </summary>
-          <div className="article-optional-fields">
+          <div className="p-5">
             <TextAreaField
               label="文章摘要"
               value={draft.excerpt}
@@ -732,47 +809,6 @@ export function ArticleEditor({
               description="最多 300 字；留空时自动提取正文。"
               onChange={(event) => update("excerpt", event.target.value)}
             />
-            <div className="article-cover-field">
-              <InputField
-                label="文章封面"
-                value={draft.coverUrl}
-                disabled={blocked}
-                maxLength={2048}
-                placeholder="图片链接，或上传图片"
-                onChange={(event) => update("coverUrl", event.target.value)}
-              />
-              {cover ? (
-                <img
-                  className="article-cover-preview"
-                  src={cover}
-                  alt="封面预览"
-                  referrerPolicy="no-referrer"
-                />
-              ) : null}
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  isDisabled={blocked}
-                  onPress={() => coverRef.current?.click()}
-                >
-                  <Upload size={15} />
-                  上传封面
-                </Button>
-                {draft.coverUrl ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    isDisabled={blocked}
-                    onPress={() => update("coverUrl", "")}
-                  >
-                    移除封面
-                  </Button>
-                ) : null}
-              </div>
-            </div>
           </div>
         </details>
       </div>

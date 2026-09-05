@@ -1,11 +1,9 @@
 "use client";
 
-import { Dropdown } from "@heroui/react";
+import { Dropdown, buttonVariants } from "@heroui/react";
 import {
   ArrowLeft,
-  ArrowUpRight,
   ChevronDown,
-  Crosshair,
   LogOut,
   Settings2,
   UserRound,
@@ -15,6 +13,9 @@ import { usePathname } from "next/navigation";
 import { useTransition, type ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
 import { Avatar } from "@/components/avatar";
+import { CommunityNavigation } from "@/components/community-navigation";
+import { FloatingHeader } from "@/components/floating-header";
+import { RouteMotion } from "@/components/route-motion";
 import { ButtonLink } from "@/components/ui";
 import { AdminNav } from "@/components/admin-nav";
 import { adminNavigation, isAdminNavActive } from "@/lib/admin-navigation";
@@ -25,29 +26,18 @@ import {
 } from "@/components/site-content";
 
 type NavUser = { name: string; avatarUrl?: string | null; isAdmin: boolean };
-const communityLinks = [
-  { href: "/", label: "首页" },
-  { href: "/events", label: "社区活动" },
-  { href: "/articles", label: "社区文章" },
-  { href: "/players", label: "交大玩家" },
-];
 
 function Brand() {
   const t = useSiteText();
   const configuration = useSiteConfiguration();
   return (
     <Link href="/" className="brand" aria-label={t("brand.name") + "首页"}>
-      <span className="brand-mark">
-        {configuration.images.logo ? (
+      {configuration.images.logo ? (
+        <span className="brand-mark">
           <SiteLogo />
-        ) : (
-          <Crosshair size={27} strokeWidth={1.6} aria-hidden="true" />
-        )}
-      </span>
-      <span>
-        <strong>{t("brand.name")}</strong>
-        <small>{t("brand.subtitle")}</small>
-      </span>
+        </span>
+      ) : null}
+      <strong>{t("brand.name")}</strong>
     </Link>
   );
 }
@@ -57,14 +47,17 @@ function AccountMenu({ user }: { user: NavUser | null }) {
   if (!user)
     return (
       <ButtonLink href="/login" size="sm">
-        登录 / 加入
-        <ArrowUpRight size={14} />
+        登录
       </ButtonLink>
     );
   return (
     <Dropdown>
       <Dropdown.Trigger
-        className="community-account"
+        className={buttonVariants({
+          variant: "ghost",
+          size: "sm",
+          className: "community-account inline-flex",
+        })}
         aria-label="账号菜单"
         isDisabled={pending}
       >
@@ -145,7 +138,10 @@ export function SiteNav({
                     <Link
                       key={href}
                       href={href}
-                      className={`nav-link ${active(href) ? "active" : ""}`}
+                      className={buttonVariants({
+                        variant: active(href) ? "secondary" : "ghost",
+                        className: "nav-link",
+                      })}
                       aria-current={active(href) ? "page" : undefined}
                     >
                       <Icon size={18} />
@@ -160,16 +156,17 @@ export function SiteNav({
         <div
           className={user?.isAdmin ? "admin-frame" : "admin-frame admin-entry"}
         >
-          <header className="admin-header">
-            <Link href="/" className="admin-back">
+          <FloatingHeader className="admin-header">
+            <Link href="/" className="admin-back" aria-label="返回社区">
               <ArrowLeft size={16} />
-              返回社区
+              <span className="admin-back-label">返回社区</span>
             </Link>
             <span className="admin-location">{pageLabel}</span>
             {user?.isAdmin ? <AdminNav /> : null}
             <AccountMenu user={user} />
-          </header>
+          </FloatingHeader>
           <div className="site-workspace" id="page-content" tabIndex={-1}>
+            <RouteMotion />
             {children}
           </div>
         </div>
@@ -181,44 +178,21 @@ export function SiteNav({
       <a className="skip-link" href="#page-content">
         跳至主要内容
       </a>
-      <header className="community-header">
+      <FloatingHeader className="community-header">
         <div className="community-nav-shell">
           <Brand />
-          <nav className="community-nav" aria-label="社区导航">
-            {communityLinks.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className={active(href) ? "active" : ""}
-                aria-current={active(href) ? "page" : undefined}
-              >
-                {label}
-              </Link>
-            ))}
-            {/* 原生导航保证跨页进入时，浏览器在内容加载后定位到介绍区。 */}
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-            <a href="/#about-community">关于我们</a>
-          </nav>
+          <CommunityNavigation />
           <div className="community-account-wrap">
             <AccountMenu user={user} />
           </div>
         </div>
-      </header>
+      </FloatingHeader>
       <div className="community-content" id="page-content" tabIndex={-1}>
+        <RouteMotion />
         {children}
       </div>
       <footer className="community-footer">
-        <div>
-          <strong>{t("footer.text")}</strong>
-          <p>{t("footer.note")}</p>
-        </div>
-        <nav aria-label="页脚导航">
-          <Link href="/events">参加活动</Link>
-          <Link href="/articles">社区文章</Link>
-          <Link href="/me">我的报名</Link>
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- 跨页锚点使用原生定位 */}
-          <a href="/#about-community">关于社区</a>
-        </nav>
+        <p>{t("footer.note")}</p>
       </footer>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Dropdown } from "@heroui/react";
+import { Dropdown, buttonVariants } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { adminNavigation, isAdminNavActive } from "@/lib/admin-navigation";
@@ -14,7 +14,11 @@ export function AdminNav() {
     <div className="admin-mobile-navigation">
       <Dropdown>
         <Dropdown.Trigger
-          className="admin-page-switch"
+          className={buttonVariants({
+            variant: "secondary",
+            size: "sm",
+            className: "inline-flex",
+          })}
           aria-label="切换管理页面"
         >
           {current?.label || "管理后台"}

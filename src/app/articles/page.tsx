@@ -46,10 +46,7 @@ export default async function ArticlesPage({
     : [];
   return (
     <main className="page-shell">
-      <PageHeading
-        title="社区文章"
-        description="社区公告、活动回顾与玩家分享。"
-      />
+      <PageHeading title="文章" />
       <form action="/articles" method="get" className="article-search">
         <InputField
           label="搜索文章"
@@ -63,9 +60,6 @@ export default async function ArticlesPage({
           <Search size={17} />
         </Button>
       </form>
-      <p className="directory-count">
-        {q ? `“${q}” · ` : ""}共 {count} 篇文章
-      </p>
       {articles.length ? (
         <div className="article-grid">
           {articles.map((article) => (
@@ -74,16 +68,14 @@ export default async function ArticlesPage({
         </div>
       ) : (
         <EmptyState
-          title={q ? "没有找到匹配的文章" : "社区的故事，慢慢写在这里。"}
-          description={
-            q
-              ? "换个关键词，或看看全部文章。"
-              : "文章发布后会出现在这里。可以先看看最近的活动。"
-          }
+          title={q ? "没有找到匹配的文章" : "暂无文章"}
+          description={q ? "试试其他关键词。" : undefined}
           action={
-            <ButtonLink href={q ? "/articles" : "/events"} variant="secondary">
-              {q ? "查看全部文章" : "看看社区活动"}
-            </ButtonLink>
+            q ? (
+              <ButtonLink href="/articles" variant="secondary">
+                查看全部文章
+              </ButtonLink>
+            ) : undefined
           }
         />
       )}

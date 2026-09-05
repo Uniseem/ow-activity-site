@@ -42,7 +42,6 @@ export default async function ArticlePage({
       </Link>
       <article>
         <header className="article-reading-header">
-          <p className="campus-eyebrow">SJTU / 社区文章</p>
           <h1>{article.title}</h1>
           <p className="article-meta">
             <span>{article.author.profile?.displayName || "社区编辑"}</span>
@@ -51,9 +50,6 @@ export default async function ArticlePage({
               {articleDate(article.publishedAt)}
             </time>
           </p>
-          {article.excerpt ? (
-            <p className="article-deck">{article.excerpt}</p>
-          ) : null}
         </header>
         {cover ? (
           <img
@@ -65,12 +61,6 @@ export default async function ArticlePage({
         ) : null}
         <ArticleContent content={article.content} />
       </article>
-      <div className="article-reading-end">
-        <span>读完了，去看看下一场活动。</span>
-        <Link href="/events" className="text-action">
-          社区活动 →
-        </Link>
-      </div>
     </main>
   );
 }

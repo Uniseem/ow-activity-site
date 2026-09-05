@@ -2,11 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createSiteText,
-  defaultSiteConfiguration,
   validateSiteConfiguration,
   isSafeImageSource,
-  siteThemeStyle,
 } from "../src/lib/site-config";
+import { editableCopyFields } from "../src/lib/site-copy";
 import { validateSiteAsset, MAX_SITE_ASSET_BYTES } from "../src/lib/site-asset";
 
 test("defaults render existing copy and overrides stay scoped to one UI location", () => {
@@ -50,7 +49,7 @@ test("empty optional copy stays empty, required labels cannot disappear, default
   );
 });
 
-test("asset URLs and theme values reject executable or unknown configuration", () => {
+test("asset URLs and legacy theme values reject executable or unknown configuration", () => {
   for (const url of [
     "javascript:alert(1)",
     "data:image/svg+xml,<svg/>",
@@ -71,12 +70,44 @@ test("asset URLs and theme values reject executable or unknown configuration", (
     validateSiteConfiguration({ accent: "red;display:none" }),
   );
   assert.throws(() => validateSiteConfiguration({ icons: {} }));
-  assert.equal(
-    siteThemeStyle({ ...defaultSiteConfiguration, accent: "#ffffff" })[
-      "--accent-foreground" as keyof React.CSSProperties
-    ],
-    "#18181b",
-  );
+});
+
+test("editing branding preserves retired copy and colors while allowing images to be cleared", () => {
+  const stored = validateSiteConfiguration({
+    texts: {
+      "brand.subtitle": "An earlier subtitle",
+      "home.eyebrow": "An earlier heading",
+      "footer.text": "An earlier footer",
+    },
+    accent: "#00ff88",
+    images: {
+      logo: "https://example.org/logo.png",
+      favicon: "https://example.org/icon.png",
+    },
+  });
+  const saved = validateSiteConfiguration({
+    ...stored,
+    texts: { ...stored.texts, "brand.name": "新站名" },
+    images: { ...stored.images, logo: "", favicon: "" },
+  });
+  assert.equal(saved.accent, stored.accent);
+  assert.equal(saved.texts["brand.subtitle"], stored.texts["brand.subtitle"]);
+  assert.equal(saved.texts["home.eyebrow"], stored.texts["home.eyebrow"]);
+  assert.equal(saved.texts["footer.text"], stored.texts["footer.text"]);
+  assert.equal(saved.images.logo, "");
+  assert.equal(saved.images.favicon, "");
+  assert.equal(saved.texts["brand.name"], "新站名");
+  for (const key of [
+    "brand.badge",
+    "brand.subtitle",
+    "home.eyebrow",
+    "footer.text",
+  ]) {
+    assert.equal(
+      editableCopyFields.some((field) => field.key === key),
+      false,
+    );
+  }
 });
 
 test("uploads enforce size and MIME signatures, including spoofed SVG", async () => {
