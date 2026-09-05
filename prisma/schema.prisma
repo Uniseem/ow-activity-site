@@ -149,6 +149,24 @@ model OAuthState {
   @@index([expiresAt])
 }
 
+model UpdateSettings {
+  id                  String    @id
+  repositoryUrl       String    @default("https://github.com/Uniseem/ow-activity-site")
+  branch              String    @default("")
+  encryptedDeployHook String?
+  revision            Int       @default(0)
+  checkKey            String?
+  checkResult         Json?
+  checkedAt           DateTime?
+  checkLease          String?
+  checkLeaseUntil     DateTime?
+  deployRequestedAt   DateTime?
+  deployRequestedSha  String?
+  deployJobId         String?
+  updatedById         String?
+  updatedAt           DateTime  @updatedAt
+}
+
 model Event {
   id             String              @id @default(cuid())
   title          String

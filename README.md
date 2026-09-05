@@ -94,6 +94,16 @@ npm run dev
 
 `npm test` 包含首次管理员表单校验。设置 `ADMIN_SETUP_TEST_DATABASE_URL` 后运行 `npm run test:admin-setup`，可验证数据库并发注册、失败回滚及旧站点升级；测试创建独立临时 schema，并在完成后清理。
 
+## 管理员更新提醒
+
+管理员登录后，页面会主动检查 GitHub；登录期间每 5 分钟检查一次。发现当前部署之后的新提交时弹出更新提示，每条 commit 显示一行首行说明，超过 100 条可继续加载。普通用户不会触发检查或看到更新信息。“稍后再说”只对本次登录有效，下一次登录或出现新的提交时会再次提示。
+
+在 **后台 → 版本更新** 设置公开 GitHub 仓库链接，默认为 `https://github.com/Uniseem/ow-activity-site`；分支留空表示默认分支。检查以构建时固定的 commit SHA 为基准，部署请求、关闭提醒和保存配置都不会推进版本号。无法比较的仓库、分叉历史和网络失败会显示实际原因。
+
+管理员可以填写 Vercel Deploy Hook，之后在提示中确认更新以触发生产部署。Hook 使用 `OAUTH_ENCRYPTION_KEY` 加密保存且不回显；未配置时仍提示更新，但无法触发部署。更换仓库或分支时需重新填写对应 Hook。Vercel 接受请求只表示开始部署，部署成功并刷新页面后才会读取新版本。多位管理员同时确认只会发出一个部署请求，10 分钟内防止重复触发。
+
+Deploy Hook 只部署其绑定的仓库分支，不会自动合并上游仓库；监测上游时需先同步代码。详细设置见 [Vercel 部署说明](./VERCEL.md)。`npm run test:updates` 使用 `UPDATE_TEST_DATABASE_URL` 在独立临时 schema 验证缓存、并发、配置及部署流程，外部部署请求使用模拟响应。
+
 ## 环境变量
 
 | 变量 | 用途 |
@@ -103,7 +113,8 @@ npm run dev
 | `ADMIN_USERNAME` | 运行 `db:seed` 时的管理员用户名，默认 `admin` |
 | `ADMIN_PASSWORD` | 运行 `db:seed` 时必填，至少 8 字符、最多 72 字节、首尾无空白，无默认密码 |
 | `NEXT_PUBLIC_SITE_URL` | 可选的完整网站地址；未设置时使用 Vercel 项目域名，本地回退到 `http://localhost:3000` |
-| `OAUTH_ENCRYPTION_KEY` | OAuth 配置加密密钥，64 位随机十六进制字符；平台 Client ID / Secret 在后台填写 |
+| `OAUTH_ENCRYPTION_KEY` | OAuth 密钥与 Deploy Hook 的加密密钥，64 位随机十六进制字符；各项配置在后台填写 |
+| `APP_GIT_COMMIT_SHA` | 可选，当前构建的完整 commit SHA；无 Git 元数据的 CLI 部署需显式传入 |
 
 管理员环境变量只供初始化脚本使用，正常登录从数据库校验密码。会话由随机令牌和数据库记录管理，无需额外的会话密钥环境变量。
 

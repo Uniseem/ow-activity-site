@@ -65,6 +65,26 @@ Google 应用处于测试状态时，需在 Google 控制台添加允许登录�
 
 平台真实授权需要管理员提供有效凭据后验证。仓库中的自动测试通过本地签发的测试令牌和模拟响应校验协议与身份校验逻辑，不依赖个人 Google/GitHub 凭据。
 
+## 管理员版本检查与更新
+
+管理员登录后自动检查，无需配置定时任务。前往 `/admin/updates` 填写监测的公开 GitHub 仓库和可选分支，默认使用 `Uniseem/ow-activity-site` 的默认分支。
+
+1. 将 Vercel 项目连接到实际部署的 Git 仓库。
+2. 在项目 **Settings → Git → Deploy Hooks** 创建指向生产分支的 Hook。
+3. 在后台保存完整 Hook 链接。该链接加密存储，复用现有 `OAUTH_ENCRYPTION_KEY`；留空可保留，勾选可清除。修改监测来源后，旧 Hook 会清除，需重新配置。
+4. 有更新时，管理员查看逐条提交记录后，点击“更新网站”并确认；系统提交部署请求，不会自动批准或执行更新。
+
+Hook 部署其绑定的仓库分支，不负责将上游改动同步到 fork。若监测上游，请先同步相应生产分支。部署失败、超时或仍在构建时，本站版本号不会改变。遇到请求超时，请在 Vercel 查看是否已经受理，10 分钟后才能再次触发。
+
+版本号在 Next.js 构建阶段固定：优先 `APP_GIT_COMMIT_SHA`，其次 `VERCEL_GIT_COMMIT_SHA`，最后读取本地 Git HEAD。Vercel Git 集成部署通常自动提供 SHA；不要在项目环境变量里固定一个过期 SHA。使用 CLI 上传且远端没有 Git 元数据时，必须为本次构建传入实际提交，例如：
+
+```powershell
+$releaseCommit = git rev-parse HEAD
+npx vercel deploy --prod --build-env "APP_GIT_COMMIT_SHA=$releaseCommit"
+```
+
+缺少 SHA 时会提示无法识别版本，不会把仓库最新提交当作已安装版本。部署新版本后刷新页面即可读取新 SHA。
+
 ## 域名
 
 默认使用 Vercel 分配的域名。页面元数据自动读取 `VERCEL_PROJECT_PRODUCTION_URL` 或 `VERCEL_URL`。

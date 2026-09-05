@@ -51,7 +51,7 @@ export async function destroySession() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getCurrentUser() {
+export async function getCurrentSession() {
   if (!isDatabaseConfigured()) {
     return null;
   }
@@ -77,7 +77,11 @@ export async function getCurrentUser() {
     return null;
   }
 
-  return session.user;
+  return session;
+}
+
+export async function getCurrentUser() {
+  return (await getCurrentSession())?.user ?? null;
 }
 
 export async function requireUser() {
