@@ -34,11 +34,13 @@ export default async function RootLayout({
       <body>
         <SiteContentProvider configuration={configuration}>
           <Header />
-          {children}
-          <footer className="footer-shell">
-            <span>{t("footer.text")}</span>
-            <span>{t("footer.note")}</span>
-          </footer>
+          <div className="site-workspace" id="page-content" tabIndex={-1}>
+            {children}
+            <footer className="footer-shell">
+              <span>{t("footer.text")}</span>
+              <span>{t("footer.note")}</span>
+            </footer>
+          </div>
         </SiteContentProvider>
       </body>
     </html>

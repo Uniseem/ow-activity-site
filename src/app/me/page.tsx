@@ -1,4 +1,12 @@
-import { Eye, LockKeyhole, Save, ShieldCheck } from "lucide-react";
+import {
+  ArrowUpRight,
+  CalendarDays,
+  Eye,
+  LockKeyhole,
+  Save,
+  ShieldCheck,
+} from "lucide-react";
+import Link from "next/link";
 import { updateProfileAction } from "@/app/actions";
 import { ActionButton } from "@/components/action-button";
 import { Avatar } from "@/components/avatar";
@@ -16,7 +24,14 @@ import {
 import { requireUser } from "@/lib/auth";
 import { OAuthConnections } from "@/components/oauth-connections";
 import { oauthMessages } from "@/lib/oauth/shared";
-import { reviewLabels, roleLabels, userStatusLabels } from "@/lib/format";
+import {
+  registrationStatusLabels,
+  reviewLabels,
+  roleLabels,
+  userStatusLabels,
+} from "@/lib/format";
+import { prisma } from "@/lib/prisma";
+import { formatEventDate } from "@/lib/event-date";
 
 export const dynamic = "force-dynamic";
 export default async function MePage({
@@ -27,6 +42,20 @@ export default async function MePage({
   const user = await requireUser();
   const query = searchParams ? await searchParams : {};
   const profile = user.profile;
+  const registrations = await prisma.eventRegistration.findMany({
+    where: {
+      userId: user.id,
+      status: { not: "CANCELLED" },
+      event: { status: { not: "DRAFT" } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    select: {
+      id: true,
+      status: true,
+      event: { select: { id: true, title: true, startTime: true } },
+    },
+  });
   const errors: Record<string, string> = {
     "avatar-size": "头像不能超过 512 KB。",
     "avatar-type": "头像只支持 PNG、JPEG、WebP 或 GIF。",
@@ -37,9 +66,9 @@ export default async function MePage({
   return (
     <main className="page-shell">
       <PageHeading
-        eyebrow="Your player profile"
+        eyebrow="我的社区空间"
         title="个人中心"
-        description="让队友认识你，也让每一次组队更合拍。"
+        description="管理玩家卡片、查看报名进度，为下一次集结做好准备。"
       />
       {typeof query.oauth === "string" && oauthMessages[query.oauth] ? (
         <div className="mb-5">
@@ -48,10 +77,15 @@ export default async function MePage({
           </Notice>
         </div>
       ) : null}
-      <OAuthConnections userId={user.id} />
-      <div className="grid items-start gap-6 lg:grid-cols-[280px_1fr]">
+      <nav className="profile-section-nav" aria-label="个人中心分区">
+        <Link href="#public-profile">公开资料</Link>
+        <Link href="#private-profile">私密资料</Link>
+        <Link href="#my-activities">我的报名</Link>
+        <Link href="#account-security">登录方式</Link>
+      </nav>
+      <div className="profile-layout">
         <aside className="grid gap-4">
-          <Card className="gap-5 border border-border p-6 shadow-none">
+          <Card className="profile-summary gap-5 border border-border p-6 shadow-none">
             <Avatar
               src={profile?.avatarUrl}
               name={profile?.displayName ?? user.username}
@@ -95,6 +129,42 @@ export default async function MePage({
           {profile?.reviewNote ? (
             <Notice tone="warning">审核备注：{profile.reviewNote}</Notice>
           ) : null}
+          <Card
+            id="my-activities"
+            className="gap-4 border border-border p-5 shadow-none"
+          >
+            <div className="flex items-center gap-2">
+              <CalendarDays size={17} className="text-accent" />
+              <h2 className="font-semibold">我的报名</h2>
+            </div>
+            {registrations.length ? (
+              <div className="grid gap-4">
+                {registrations.map((registration) => (
+                  <Link
+                    key={registration.id}
+                    href={`/events/${registration.event.id}`}
+                    className="grid gap-2 border-t border-separator pt-4"
+                  >
+                    <span className="flex items-start justify-between gap-2 text-sm font-medium">
+                      {registration.event.title}
+                      <ArrowUpRight size={14} className="shrink-0 text-muted" />
+                    </span>
+                    <span className="text-[10px] text-muted">
+                      {formatEventDate(registration.event.startTime)}
+                    </span>
+                    <StatusChip
+                      status={registration.status}
+                      label={registrationStatusLabels[registration.status]}
+                    />
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs leading-6 text-muted">
+                还没有报名记录。找到喜欢的活动，开启下一次组队。
+              </p>
+            )}
+          </Card>
         </aside>
         <div className="grid min-w-0 gap-4">
           {query.registered === "1" ? (
@@ -112,7 +182,7 @@ export default async function MePage({
           {error ? <Notice tone="danger">{error}</Notice> : null}
           <Card className="border border-border p-6 shadow-none sm:p-8">
             <form action={updateProfileAction} className="grid gap-8">
-              <fieldset className="form-section">
+              <fieldset className="form-section" id="public-profile">
                 <legend>
                   <span className="flex items-center gap-2">
                     <Eye size={18} className="text-accent" />
@@ -176,7 +246,10 @@ export default async function MePage({
                   description="最多 80 字，分享你的开黑态度。"
                 />
               </fieldset>
-              <fieldset className="form-section border-t border-separator pt-7">
+              <fieldset
+                className="form-section border-t border-separator pt-7"
+                id="private-profile"
+              >
                 <legend>
                   <span className="flex items-center gap-2">
                     <LockKeyhole size={18} className="text-accent" />
@@ -228,6 +301,9 @@ export default async function MePage({
               </div>
             </form>
           </Card>
+          <section id="account-security">
+            <OAuthConnections userId={user.id} />
+          </section>
         </div>
       </div>
     </main>

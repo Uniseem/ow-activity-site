@@ -41,7 +41,7 @@ export function SiteCover() {
   const config = useSiteConfiguration();
   return (
     <div
-      className="h-44 bg-cover bg-center sm:h-56"
+      className="event-cover"
       style={{
         backgroundImage: config.images.event
           ? "url(" + JSON.stringify(config.images.event) + ")"

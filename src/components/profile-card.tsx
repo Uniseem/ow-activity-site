@@ -15,7 +15,7 @@ export function PlayerCard({
   };
 }) {
   return (
-    <Card className="h-full gap-4 border border-border p-5 shadow-none">
+    <Card className="player-card" data-role={profile.mainRole}>
       <div className="flex items-center gap-3">
         <Avatar src={profile.avatarUrl} name={profile.displayName} />
         <div className="min-w-0 flex-1">
@@ -35,9 +35,11 @@ export function PlayerCard({
           </p>
         </div>
       </div>
-      <p className="flex-1 text-sm leading-6 text-muted">{profile.slogan}</p>
+      <p className="flex-1 text-sm leading-7 text-muted">
+        “{profile.slogan || "期待和新队友一起上场。"}”
+      </p>
       {profile.mainHeroes?.length ? (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 border-t border-separator pt-4">
           {profile.mainHeroes.slice(0, 4).map((hero, index) => (
             <Chip key={hero + index} size="sm" variant="secondary">
               {hero}

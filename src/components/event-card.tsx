@@ -1,10 +1,9 @@
 import { ArrowUpRight, CalendarClock } from "lucide-react";
 import Link from "next/link";
-import { ButtonLink, Capacity, Card, Chip, StatusChip } from "@/components/ui";
+import { ButtonLink, Capacity, Card, StatusChip } from "@/components/ui";
 import { eventStatusLabels, eventTypeLabel } from "@/lib/format";
 import { formatEventDate, shanghaiDateValue } from "@/lib/event-date";
-
-type EventCardProps = {
+export type EventCardProps = {
   event: {
     id: string;
     title: string;
@@ -18,24 +17,15 @@ type EventCardProps = {
   };
   hrefPrefix?: string;
 };
-
 export function EventCard({ event, hrefPrefix = "/events" }: EventCardProps) {
   const href = hrefPrefix + "/" + event.id;
-  const date = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    month: "numeric",
-    day: "2-digit",
-  }).formatToParts(event.startTime);
+  const date = shanghaiDateValue(event.startTime).split("-");
   return (
-    <Card className="event-card gap-5">
-      <div className="flex items-start justify-between gap-3">
+    <Card className="event-card" data-type={event.type}>
+      <div className="event-card-header">
         <div className="date-tile" aria-hidden="true">
-          <span className="text-[10px] font-semibold">
-            {date.find((part) => part.type === "month")?.value} 月
-          </span>
-          <span className="text-2xl font-bold leading-8">
-            {date.find((part) => part.type === "day")?.value}
-          </span>
+          <strong>{date[2]}</strong>
+          <span>/ {date[1]} 月</span>
         </div>
         <StatusChip
           status={event.status}
@@ -43,39 +33,43 @@ export function EventCard({ event, hrefPrefix = "/events" }: EventCardProps) {
             eventStatusLabels[event.status as keyof typeof eventStatusLabels] ??
             event.status
           }
+          className="relative z-10"
         />
+        <span className="event-card-type">{eventTypeLabel(event)}</span>
       </div>
-      <div className="flex-1">
-        <Chip size="sm" variant="secondary">
-          {eventTypeLabel(event)}
-        </Chip>
-        <h3 className="mt-3 text-xl font-semibold tracking-tight">
-          <Link href={href} className="hover:text-accent">
-            {event.title}
-          </Link>
-        </h3>
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">
-          {event.description}
-        </p>
+      <div className="event-card-body">
+        <div className="flex-1">
+          <h3 className="event-card-title">
+            <Link href={href} className="hover:text-accent">
+              {event.title}
+            </Link>
+          </h3>
+          <p className="mt-2 line-clamp-2 text-xs leading-6 text-muted">
+            {event.description}
+          </p>
+        </div>
+        <Capacity
+          count={event.registrations?.length ?? 0}
+          max={event.maxParticipants}
+        />
+        <div className="event-card-footer">
+          <span className="flex min-w-0 items-center gap-1.5 text-[10px] text-muted">
+            <CalendarClock size={13} className="shrink-0" />
+            <time dateTime={shanghaiDateValue(event.startTime)}>
+              {formatEventDate(event.startTime)}
+            </time>
+          </span>
+          <ButtonLink
+            href={href}
+            variant="ghost"
+            size="sm"
+            className="shrink-0 px-2"
+          >
+            {hrefPrefix === "/events" ? "查看" : "管理"}
+            <ArrowUpRight size={15} />
+          </ButtonLink>
+        </div>
       </div>
-      <div className="flex items-center gap-2 text-xs text-muted">
-        <CalendarClock size={15} />
-        <time dateTime={shanghaiDateValue(event.startTime)}>
-          {formatEventDate(event.startTime)}
-        </time>
-      </div>
-      <Capacity
-        count={event.registrations?.length ?? 0}
-        max={event.maxParticipants}
-      />
-      <ButtonLink
-        href={href}
-        variant="secondary"
-        className="w-full justify-between"
-      >
-        {hrefPrefix === "/events" ? "查看活动" : "管理活动"}
-        <ArrowUpRight size={16} />
-      </ButtonLink>
     </Card>
   );
 }

@@ -5,6 +5,8 @@ import {
   Clock,
   Plus,
   Users,
+  Settings2,
+  Download,
 } from "lucide-react";
 import { AdminNav } from "@/components/admin-nav";
 import { PageHeading } from "@/components/page-heading";
@@ -48,9 +50,9 @@ export default async function AdminPage() {
   return (
     <main className="page-shell">
       <PageHeading
-        eyebrow="Community management"
+        eyebrow="社区运营"
         title="管理后台"
-        description="处理社区审核，让每一场活动顺利开始。"
+        description="先处理待审申请，再安排下一场活动。社区的进展，都在这里。"
         action={
           <ButtonLink href="/admin/events/new">
             <Plus size={17} />
@@ -100,6 +102,18 @@ export default async function AdminPage() {
             href: "/admin/events",
             title: "活动与报名管理",
             description: "发布新活动，调整活动安排，审核玩家报名。",
+          },
+          {
+            icon: Settings2,
+            href: "/admin/customize",
+            title: "站点外观设置",
+            description: "设置社区名称、标志、背景图片和主题色。",
+          },
+          {
+            icon: Download,
+            href: "/admin/updates",
+            title: "版本与更新",
+            description: "查看最新改动，管理更新来源并确认部署。",
           },
         ].map(({ icon: Icon, href, title, description }) => (
           <Card

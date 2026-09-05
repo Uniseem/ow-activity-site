@@ -4,6 +4,7 @@ import { Card, Notice } from "@/components/ui";
 import { OAuthButtons } from "@/components/oauth-buttons";
 import { getOAuthAvailability } from "@/lib/oauth/server";
 import { oauthMessages } from "@/lib/oauth/shared";
+import { getSiteText } from "@/lib/site-settings";
 
 export async function AuthPage({
   mode,
@@ -14,6 +15,7 @@ export async function AuthPage({
 }) {
   const isLogin = mode === "login";
   const providers = await getOAuthAvailability();
+  const t = await getSiteText();
   return (
     <main className="page-shell auth-shell">
       <section className="auth-pitch">
@@ -67,10 +69,10 @@ export async function AuthPage({
           ))}
         </div>
       </section>
-      <Card className="gap-7 border border-border p-6 shadow-sm sm:p-8">
+      <Card className="auth-form-card">
         <div>
           <h2 className="text-2xl font-semibold">
-            {isLogin ? "登录账号" : "加入先锋活动站"}
+            {isLogin ? "登录账号" : "加入" + t("brand.name")}
           </h2>
           <p className="mt-2 text-sm text-muted">
             {isLogin

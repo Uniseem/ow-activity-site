@@ -32,7 +32,7 @@ export default async function AdminEventsPage() {
       />
       <AdminNav />
       {events.length ? (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="event-grid">
           {events.map((event) => (
             <EventCard
               key={event.id}

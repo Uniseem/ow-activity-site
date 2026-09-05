@@ -87,13 +87,16 @@ export default async function EventDetailPage({
     typeof query.error === "string" ? errors[query.error] : undefined;
   return (
     <main className="page-shell">
-      <div className="mb-5">
+      <div className="mb-5 flex items-center justify-between gap-3">
         <ButtonLink href="/events" variant="ghost" size="sm">
           <ArrowLeft size={15} />
           返回活动大厅
         </ButtonLink>
+        <ButtonLink href="#registration" variant="secondary" size="sm">
+          {userRegistration ? "查看我的报名" : "前往报名"}
+        </ButtonLink>
       </div>
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_350px]">
+      <div className="detail-layout">
         <div className="grid min-w-0 gap-6">
           <Card className="gap-0 overflow-hidden border border-border p-0 shadow-none">
             <SiteCover />
@@ -225,11 +228,11 @@ export default async function EventDetailPage({
             )}
           </Card>
         </div>
-        <aside className="grid gap-4 lg:sticky lg:top-28">
+        <aside className="registration-panel" id="registration">
           <Card className="gap-5 border border-border p-6 shadow-none">
             <div>
-              <p className="eyebrow">Join the squad</p>
-              <h2 className="text-xl font-semibold">为你留个位置</h2>
+              <p className="eyebrow">活动报名</p>
+              <h2 className="text-xl font-semibold">加入这次集结</h2>
             </div>
             <Capacity count={approvedCount} max={event.maxParticipants} />
             {query.registered ? (

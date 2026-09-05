@@ -19,13 +19,13 @@ export const imageFields = [
     key: "hero",
     label: "首页背景图",
     description: "建议使用横向图片，文字区域保留深色遮罩。",
-    defaultValue: "/arena-cover.png",
+    defaultValue: "/arena-v2.webp",
   },
   {
     key: "event",
     label: "活动默认封面",
     description: "所有活动详情页使用的默认头图。",
-    defaultValue: "/arena-cover.png",
+    defaultValue: "/arena-v2.webp",
   },
 ] as const;
 export type ImageKey = (typeof imageFields)[number]["key"];
@@ -64,7 +64,12 @@ export function siteThemeStyle(
   } as CSSProperties;
 }
 export function isSafeImageSource(value: string) {
-  if (value === "" || value === "/favicon.ico" || value === "/arena-cover.png")
+  if (
+    value === "" ||
+    value === "/favicon.ico" ||
+    value === "/arena-cover.png" ||
+    value === "/arena-v2.webp"
+  )
     return true;
   if (/^\/api\/site-assets\/[a-z0-9]{20,40}$/.test(value)) return true;
   try {
@@ -114,7 +119,15 @@ export function validateSiteConfiguration(input: unknown): SiteConfiguration {
   }
   return {
     texts,
-    images: { ...defaultSiteConfiguration.images, ...images },
+    images: {
+      ...defaultSiteConfiguration.images,
+      ...Object.fromEntries(
+        Object.entries(images).map(([key, value]) => [
+          key,
+          value === "/arena-cover.png" ? "/arena-v2.webp" : value,
+        ]),
+      ),
+    },
     accent,
   };
 }

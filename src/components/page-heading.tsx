@@ -39,7 +39,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <Card className="items-center py-14 text-center">
+    <Card className="empty-state items-center gap-3 text-center shadow-none">
       <span className="icon-tile mb-2">
         <Inbox size={22} aria-hidden="true" />
       </span>
