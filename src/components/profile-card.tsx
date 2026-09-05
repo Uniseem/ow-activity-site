@@ -1,9 +1,10 @@
-import { BadgeCheck } from "lucide-react";
-
 import { Avatar } from "@/components/avatar";
+import { Card, Chip } from "@/components/ui";
 import { roleLabels } from "@/lib/format";
 
-type PlayerCardProps = {
+export function PlayerCard({
+  profile,
+}: {
   profile: {
     avatarUrl?: string | null;
     displayName: string;
@@ -11,39 +12,43 @@ type PlayerCardProps = {
     mainRole?: string | null;
     mainHeroes?: readonly string[];
   };
-};
-
-export function PlayerCard({ profile }: PlayerCardProps) {
+}) {
   return (
-    <article className="grid min-h-36 gap-4 rounded-md border border-black/10 bg-white p-4 shadow-sm">
-      <div className="flex items-start gap-3">
-        <Avatar src={profile.avatarUrl} name={profile.displayName} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate text-lg font-black">{profile.displayName}</h3>
-            <BadgeCheck className="h-4 w-4 shrink-0 text-[var(--green)]" />
+    <Card
+      className="player-card grid h-full min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-start gap-4"
+      data-role={profile.mainRole}
+    >
+      <Avatar
+        src={profile.avatarUrl}
+        name={profile.displayName}
+        shape="square"
+      />
+      <div className="grid min-w-0 content-start gap-2 [overflow-wrap:anywhere]">
+        <h3 className="font-semibold">{profile.displayName}</h3>
+        {profile.mainRole ? (
+          <p className="text-sm text-muted">
+            {roleLabels[profile.mainRole as keyof typeof roleLabels] ??
+              profile.mainRole}
+          </p>
+        ) : null}
+        {profile.slogan.trim() ? (
+          <p className="text-sm leading-6 text-muted">{profile.slogan}</p>
+        ) : null}
+        {profile.mainHeroes?.length ? (
+          <div className="flex min-w-0 flex-wrap gap-1.5">
+            {profile.mainHeroes.slice(0, 4).map((hero, index) => (
+              <Chip
+                key={hero + index}
+                size="sm"
+                variant="secondary"
+                className="max-w-full"
+              >
+                <span className="truncate">{hero}</span>
+              </Chip>
+            ))}
           </div>
-          {profile.mainRole ? (
-            <p className="mt-1 text-sm font-semibold text-[var(--teal)]">
-              {roleLabels[profile.mainRole as keyof typeof roleLabels] ??
-                profile.mainRole}
-            </p>
-          ) : null}
-        </div>
+        ) : null}
       </div>
-      <p className="text-sm leading-6 text-[#2f3542]">{profile.slogan}</p>
-      {profile.mainHeroes?.length ? (
-        <div className="flex flex-wrap gap-2">
-          {profile.mainHeroes.slice(0, 4).map((hero) => (
-            <span
-              key={hero}
-              className="rounded-md border border-black/10 bg-[#f5f7fb] px-2 py-1 text-xs font-semibold text-[#3d4451]"
-            >
-              {hero}
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </article>
+    </Card>
   );
 }

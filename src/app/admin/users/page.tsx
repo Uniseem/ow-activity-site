@@ -1,193 +1,328 @@
-import { Ban, Check, Clock, X } from "lucide-react";
-
-import {
-  reviewProfileAction,
-  updateUserStatusAction,
-} from "@/app/actions";
+import { Check, X } from "lucide-react";
+import type { Prisma } from "@/generated/prisma/client";
+import { reviewProfileAction, updateUserStatusAction } from "@/app/actions";
 import { ActionButton } from "@/components/action-button";
+import { AdminUserForm } from "@/components/admin-user-form";
 import { Avatar } from "@/components/avatar";
-import { requireAdmin } from "@/lib/auth";
+import { EmptyState, PageHeading } from "@/components/page-heading";
 import {
-  reviewLabels,
-  roleLabels,
-  userStatusLabels,
-} from "@/lib/format";
+  Button,
+  ButtonLink,
+  InputField,
+  Notice,
+  SelectField,
+  StatusChip,
+  TextAreaField,
+} from "@/components/ui";
+import { requireAdmin } from "@/lib/auth";
+import { reviewLabels, roleLabels, userStatusLabels } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireAdmin();
-
+  const query = searchParams ? await searchParams : {};
+  const status =
+    typeof query.status === "string" &&
+    ["PENDING", "APPROVED", "REJECTED", "BANNED"].includes(query.status)
+      ? (query.status as keyof typeof userStatusLabels)
+      : "all";
+  const q = typeof query.q === "string" ? query.q.trim().slice(0, 100) : "";
+  const where: Prisma.UserWhereInput = {
+    ...(status === "all"
+      ? {}
+      : status === "BANNED"
+        ? { status: "BANNED" }
+        : { profile: { is: { reviewStatus: status } } }),
+    ...(q
+      ? {
+          OR: [
+            { username: { contains: q, mode: "insensitive" } },
+            {
+              profile: {
+                is: { displayName: { contains: q, mode: "insensitive" } },
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+  const total = await prisma.user.count({ where });
+  const page = Math.min(
+    Math.max(1, Math.floor(Number(query.page) || 1)),
+    Math.max(1, Math.ceil(total / 20)),
+  );
   const users = await prisma.user.findMany({
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+    where,
+    orderBy: { createdAt: "desc" },
+    skip: (page - 1) * 20,
+    take: 20,
     include: { profile: true },
   });
-
+  function href(nextStatus: string, nextPage = 1) {
+    return (
+      "/admin/users?" +
+      new URLSearchParams({ status: nextStatus, q, page: String(nextPage) })
+    );
+  }
+  const saved =
+    query.saved === "APPROVED"
+      ? "资料已通过审核，账号现已可参加活动。"
+      : query.saved === "REJECTED"
+        ? "资料已拒绝，玩家可查看备注后修改并重新提交。"
+        : query.saved === "status"
+          ? "账号状态已更新。"
+          : "";
+  const returnTo = href(status, page);
   return (
-    <main className="page-shell grid gap-6">
-      <div>
-        <p className="text-sm font-black uppercase tracking-[0.12em] text-[var(--teal)]">
-          Admin
-        </p>
-        <h1 className="mt-1 text-3xl font-black">用户与资料审核</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-          公开展示只取审核通过的头像、昵称和宣言；详细资料只在这里给管理员查看。
-        </p>
-      </div>
-
-      <section className="grid gap-4">
-        {users.map((user) => {
-          const profile = user.profile;
-
-          return (
-            <article
-              key={user.id}
-              className="grid gap-5 rounded-md border border-black/10 bg-white p-5 shadow-sm lg:grid-cols-[1fr_320px]"
+    <main className="page-shell">
+      <PageHeading
+        title="用户管理"
+        description="展开玩家查看资料并审核，账号管理放在资料下方。"
+      />
+      <div className="admin-filter-bar">
+        <nav aria-label="用户筛选" className="flex flex-wrap gap-1">
+          {[
+            ["all", "全部"],
+            ["PENDING", "待审资料"],
+            ["APPROVED", "已通过"],
+            ["REJECTED", "已拒绝"],
+            ["BANNED", "已封禁"],
+          ].map(([value, label]) => (
+            <ButtonLink
+              key={value}
+              href={href(value)}
+              variant={status === value ? "primary" : "ghost"}
+              size="sm"
             >
-              <div className="grid gap-4">
-                <div className="flex items-start gap-4">
-                  <Avatar
-                    src={profile?.avatarUrl}
-                    name={profile?.displayName ?? user.username}
-                    size="lg"
-                  />
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-2xl font-black">
+              {label}
+            </ButtonLink>
+          ))}
+        </nav>
+        <form action="/admin/users" className="flex items-end gap-2">
+          <input type="hidden" name="status" value={status} />
+          <InputField
+            label="搜索用户"
+            name="q"
+            defaultValue={q}
+            maxLength={100}
+            placeholder="昵称或用户名"
+          />
+          <Button type="submit" variant="secondary">
+            搜索
+          </Button>
+        </form>
+      </div>
+      {saved ? (
+        <div className="mb-4">
+          <Notice tone="success">{saved}</Notice>
+        </div>
+      ) : null}
+      <section className="grid gap-3" aria-label="用户列表">
+        {users.length ? (
+          users.map((user) => {
+            const profile = user.profile;
+            const pending = profile?.reviewStatus === "PENDING";
+            return (
+              <details
+                key={user.id}
+                className="admin-disclosure admin-user-card rounded-xl border border-border bg-surface"
+                open={status === "PENDING" && users.length === 1}
+              >
+                <summary>
+                  <div className="admin-user-summary">
+                    <Avatar
+                      src={profile?.avatarUrl}
+                      name={profile?.displayName ?? user.username}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h2 className="break-words font-semibold">
                         {profile?.displayName ?? user.username}
                       </h2>
-                      <StatusPill value={userStatusLabels[user.status]} />
-                      <StatusPill
-                        value={
-                          profile ? reviewLabels[profile.reviewStatus] : "未填资料"
+                      <p className="mt-1 break-all text-xs font-normal text-muted">
+                        @{user.username}
+                        {user.role === "ADMIN" ? " · 管理员" : ""}
+                      </p>
+                    </div>
+                    <div className="admin-user-statuses flex flex-wrap gap-2">
+                      <StatusChip
+                        status={user.status}
+                        label={"账号：" + userStatusLabels[user.status]}
+                      />
+                      <StatusChip
+                        status={profile?.reviewStatus ?? "PENDING"}
+                        label={
+                          "资料：" +
+                          (profile
+                            ? reviewLabels[profile.reviewStatus]
+                            : "未填写")
                         }
                       />
                     </div>
-                    <p className="mt-1 text-sm font-semibold text-[var(--muted)]">
-                      @{user.username} · {user.role === "ADMIN" ? "管理员" : "玩家"}
+                  </div>
+                </summary>
+                <div className="admin-disclosure-body grid gap-5">
+                  {profile ? (
+                    <>
+                      <dl className="grid gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <Info label="战网 ID" value={profile.battleTag} />
+                        <Info
+                          label="常用位置"
+                          value={
+                            profile.mainRole
+                              ? roleLabels[profile.mainRole]
+                              : null
+                          }
+                        />
+                        <Info
+                          label="常用英雄"
+                          value={profile.mainHeroes.join("，")}
+                        />
+                        <Info label="段位" value={profile.rank} />
+                        <Info label="在线时间" value={profile.onlineTime} />
+                        <Info label="联系方式" value={profile.contact} />
+                        <Info label="个人签名" value={profile.slogan} />
+                        <Info label="补充备注" value={profile.extraNote} />
+                        {!pending ? (
+                          <Info label="审核备注" value={profile.reviewNote} />
+                        ) : null}
+                      </dl>
+                      <details
+                        className="admin-disclosure border-t border-border"
+                        open={pending}
+                      >
+                        <summary>
+                          {pending ? "审核资料" : "修改审核结果"}
+                        </summary>
+                        <AdminUserForm
+                          action={reviewProfileAction}
+                          className="admin-disclosure-body grid gap-4"
+                        >
+                          <input
+                            type="hidden"
+                            name="profileId"
+                            value={profile.id}
+                          />
+                          <input
+                            type="hidden"
+                            name="returnTo"
+                            value={returnTo}
+                          />
+                          <TextAreaField
+                            label="审核备注（可选）"
+                            name="reviewNote"
+                            defaultValue={profile.reviewNote ?? ""}
+                            placeholder="玩家会看到这条备注"
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            {profile.reviewStatus !== "APPROVED" ? (
+                              <ActionButton
+                                name="decision"
+                                value="APPROVED"
+                                pendingLabel="正在审核…"
+                              >
+                                <Check size={16} />
+                                通过资料
+                              </ActionButton>
+                            ) : null}
+                            {profile.reviewStatus !== "REJECTED" ? (
+                              <ActionButton
+                                name="decision"
+                                value="REJECTED"
+                                variant="danger-soft"
+                                pendingLabel="正在审核…"
+                              >
+                                <X size={16} />
+                                拒绝资料
+                              </ActionButton>
+                            ) : null}
+                          </div>
+                        </AdminUserForm>
+                      </details>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted">
+                      用户尚未填写资料，无需审核。
                     </p>
-                    {profile?.slogan ? (
-                      <p className="mt-3 text-base leading-7 text-[#2f3542]">
-                        {profile.slogan}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-
-                {profile ? (
-                  <div className="grid gap-3 rounded-md bg-[#f5f7fb] p-4 text-sm md:grid-cols-2">
-                    <InfoLine label="战网 ID" value={profile.battleTag} />
-                    <InfoLine
-                      label="常用位置"
-                      value={
-                        profile.mainRole
-                          ? roleLabels[profile.mainRole]
-                          : null
-                      }
-                    />
-                    <InfoLine
-                      label="常用英雄"
-                      value={profile.mainHeroes.join("，")}
-                    />
-                    <InfoLine label="段位" value={profile.rank} />
-                    <InfoLine label="在线时间" value={profile.onlineTime} />
-                    <InfoLine label="联系方式" value={profile.contact} />
-                    <InfoLine label="备注" value={profile.extraNote} wide />
-                    <InfoLine label="审核备注" value={profile.reviewNote} wide />
-                  </div>
-                ) : (
-                  <p className="rounded-md bg-[#f5f7fb] p-4 text-sm font-semibold text-[var(--muted)]">
-                    用户还没有填写资料。
-                  </p>
-                )}
-              </div>
-
-              <div className="grid content-start gap-3">
-                {profile ? (
-                  <form action={reviewProfileAction} className="grid gap-3">
-                    <input type="hidden" name="profileId" value={profile.id} />
-                    <label className="grid gap-2 text-sm font-semibold">
-                      审核备注
-                      <textarea
-                        className="focus-ring min-h-24 resize-y rounded-md border border-black/15 px-3 py-2 text-base"
-                        name="reviewNote"
-                        defaultValue={profile.reviewNote ?? ""}
-                      />
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <ActionButton
-                        name="decision"
-                        value="APPROVED"
-                        className="bg-[var(--green)] text-white hover:bg-[#3f884f]"
-                      >
-                        <Check className="h-4 w-4" />
-                        通过
-                      </ActionButton>
-                      <ActionButton
-                        name="decision"
-                        value="REJECTED"
-                        className="bg-[var(--red)] text-white hover:bg-[#aa4444]"
-                      >
-                        <X className="h-4 w-4" />
-                        拒绝
-                      </ActionButton>
-                    </div>
-                  </form>
-                ) : null}
-
-                <form action={updateUserStatusAction} className="grid gap-3">
-                  <input type="hidden" name="userId" value={user.id} />
-                  <label className="grid gap-2 text-sm font-semibold">
-                    账号状态
-                    <select
-                      className="focus-ring min-h-11 rounded-md border border-black/15 px-3 text-base"
-                      name="status"
-                      defaultValue={user.status}
+                  )}
+                  <details className="admin-disclosure border-t border-border">
+                    <summary>账号状态管理</summary>
+                    <AdminUserForm
+                      key={`${user.id}:${user.status}`}
+                      action={updateUserStatusAction}
+                      className="admin-disclosure-body grid max-w-md gap-4"
                     >
-                      {Object.entries(userStatusLabels).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <ActionButton className="border border-black/10 bg-white text-[#3d4451] hover:bg-black/5">
-                    <Ban className="h-4 w-4" />
-                    更新状态
-                  </ActionButton>
-                </form>
-              </div>
-            </article>
-          );
-        })}
+                      <input type="hidden" name="userId" value={user.id} />
+                      <input type="hidden" name="returnTo" value={returnTo} />
+                      <SelectField
+                        label="账号状态"
+                        name="status"
+                        options={userStatusLabels}
+                        defaultValue={user.status}
+                      />
+                      <p className="text-xs text-muted">
+                        封禁后，该用户将无法报名参加活动。
+                      </p>
+                      <ActionButton
+                        className="w-fit"
+                        variant="secondary"
+                        pendingLabel="正在更新…"
+                      >
+                        保存账号状态
+                      </ActionButton>
+                    </AdminUserForm>
+                  </details>
+                </div>
+              </details>
+            );
+          })
+        ) : (
+          <EmptyState
+            title="没有符合条件的用户"
+            description="试试其他筛选条件，新的资料申请会出现在“待审资料”中。"
+          />
+        )}
       </section>
+      <div className="admin-pagination">
+        <span>共 {total} 位用户</span>
+        <div className="flex items-center gap-2">
+          {page > 1 ? (
+            <ButtonLink
+              href={href(status, page - 1)}
+              variant="secondary"
+              size="sm"
+            >
+              上一页
+            </ButtonLink>
+          ) : null}
+          <span>
+            {page} / {Math.max(1, Math.ceil(total / 20))}
+          </span>
+          {page * 20 < total ? (
+            <ButtonLink
+              href={href(status, page + 1)}
+              variant="secondary"
+              size="sm"
+            >
+              下一页
+            </ButtonLink>
+          ) : null}
+        </div>
+      </div>
     </main>
   );
 }
-
-function StatusPill({ value }: { value: string }) {
+function Info({ label, value }: { label: string; value?: string | null }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-black/10 px-2 py-1 text-xs font-bold text-[#3d4451]">
-      <Clock className="h-3 w-3" />
-      {value}
-    </span>
-  );
-}
-
-function InfoLine({
-  label,
-  value,
-  wide,
-}: {
-  label: string;
-  value?: string | null;
-  wide?: boolean;
-}) {
-  return (
-    <p className={wide ? "md:col-span-2" : ""}>
-      <span className="font-black">{label}：</span>
-      <span className="text-[var(--muted)]">{value || "未填写"}</span>
-    </p>
+    <div className="min-w-0">
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">
+        {value || "未填写"}
+      </dd>
+    </div>
   );
 }

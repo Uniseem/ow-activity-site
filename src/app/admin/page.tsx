@@ -1,111 +1,118 @@
 import {
+  ArrowRight,
   CalendarDays,
   ClipboardCheck,
-  Clock,
-  Plus,
+  FilePenLine,
   Users,
 } from "lucide-react";
-import Link from "next/link";
-
+import { PageHeading } from "@/components/page-heading";
+import { ButtonLink, Card, Chip } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { syncEventStatuses } from "@/lib/event-schedule";
 
 export const dynamic = "force-dynamic";
-
 export default async function AdminPage() {
   await requireAdmin();
-
-  const [pendingProfiles, pendingRegistrations, openEvents, totalUsers] =
+  await syncEventStatuses();
+  const [pendingProfiles, pendingRegistrations, openEvents, draftArticles] =
     await Promise.all([
       prisma.profile.count({ where: { reviewStatus: "PENDING" } }),
       prisma.eventRegistration.count({ where: { status: "PENDING" } }),
-      prisma.event.count({ where: { status: "OPEN" } }),
-      prisma.user.count(),
+      prisma.event.count({ where: { status: { in: ["OPEN", "RUNNING"] } } }),
+      prisma.article.count({ where: { status: "DRAFT" } }),
     ]);
-
   return (
-    <main className="page-shell grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-sm font-black uppercase tracking-[0.12em] text-[var(--teal)]">
-            Admin
+    <main className="page-shell">
+      <PageHeading title="工作台" description="待办和常用操作。" />
+      <Card className="gap-0 p-0">
+        <div className="border-b border-border px-6 py-5">
+          <h2 className="section-title">待处理</h2>
+          <p className="mt-1 text-sm text-muted">
+            {pendingProfiles + pendingRegistrations
+              ? "处理审核后，玩家会在个人页面看到结果。"
+              : "当前没有待审核申请。"}
           </p>
-          <h1 className="mt-1 text-3xl font-black">管理后台</h1>
         </div>
-        <Link
-          href="/admin/events/new"
-          className="focus-ring inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--orange)] px-4 py-2 text-sm font-black text-white hover:bg-[#dd6815]"
-        >
-          <Plus className="h-4 w-4" />
-          创建活动
-        </Link>
+        {[
+          {
+            icon: Users,
+            title: "玩家资料审核",
+            count: pendingProfiles,
+            href: "/admin/users?status=PENDING",
+          },
+          {
+            icon: ClipboardCheck,
+            title: "活动报名审核",
+            count: pendingRegistrations,
+            href: "/admin/events?filter=review",
+          },
+        ].map(({ icon: Icon, title, count, href }) => (
+          <div
+            key={href}
+            className="flex items-center justify-between gap-4 border-b border-border px-6 py-5 last:border-0"
+          >
+            <div className="flex items-center gap-3">
+              <Icon size={19} className="text-muted" />
+              <span className="font-medium">{title}</span>
+              <Chip
+                size="sm"
+                color={count ? "warning" : "default"}
+                variant="soft"
+              >
+                {count}
+              </Chip>
+            </div>
+            <ButtonLink
+              href={href}
+              variant={count ? "primary" : "secondary"}
+              size="sm"
+            >
+              {count ? "去审核" : "查看"}
+              <ArrowRight size={14} />
+            </ButtonLink>
+          </div>
+        ))}
+      </Card>
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        {[
+          {
+            icon: CalendarDays,
+            title: "活动",
+            description: `${openEvents} 场活动正在报名或进行中`,
+            href: "/admin/events",
+            create: "/admin/events/new",
+            label: "创建活动",
+          },
+          {
+            icon: FilePenLine,
+            title: "文章",
+            description: `${draftArticles} 篇草稿尚未发布`,
+            href: "/admin/articles",
+            create: "/admin/articles/new",
+            label: "写文章",
+          },
+        ].map(({ icon: Icon, title, description, href, create, label }) => (
+          <Card
+            key={href}
+            className="gap-5 p-6"
+          >
+            <div className="flex items-center gap-3">
+              <Icon size={19} />
+              <h2 className="section-title">{title}</h2>
+            </div>
+            <p className="text-sm text-muted">{description}</p>
+            <div className="flex gap-2">
+              <ButtonLink href={create} variant="secondary" size="sm">
+                {label}
+              </ButtonLink>
+              <ButtonLink href={href} variant="ghost" size="sm">
+                查看全部
+              </ButtonLink>
+            </div>
+          </Card>
+        ))}
       </div>
-
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Metric icon={<Clock />} label="待审资料" value={pendingProfiles} />
-        <Metric
-          icon={<ClipboardCheck />}
-          label="待审报名"
-          value={pendingRegistrations}
-        />
-        <Metric icon={<CalendarDays />} label="报名中活动" value={openEvents} />
-        <Metric icon={<Users />} label="注册用户" value={totalUsers} />
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2">
-        <AdminLink
-          href="/admin/users"
-          title="用户与资料审核"
-          description="查看注册用户、审核公开资料、封禁不合适账号。"
-        />
-        <AdminLink
-          href="/admin/events"
-          title="活动与报名管理"
-          description="创建活动、编辑状态、处理玩家报名。"
-        />
-      </section>
     </main>
-  );
-}
-
-function Metric({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactElement;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-md border border-black/10 bg-white p-5 shadow-sm">
-      <div className="mb-4 inline-flex rounded-md bg-[#f5f7fb] p-2 text-[var(--teal)]">
-        {icon}
-      </div>
-      <p className="text-sm font-bold text-[var(--muted)]">{label}</p>
-      <p className="mt-1 text-3xl font-black">{value}</p>
-    </div>
-  );
-}
-
-function AdminLink({
-  href,
-  title,
-  description,
-}: {
-  href: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="focus-ring rounded-md border border-black/10 bg-white p-5 shadow-sm hover:border-[var(--teal)]"
-    >
-      <h2 className="text-xl font-black">{title}</h2>
-      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        {description}
-      </p>
-    </Link>
   );
 }

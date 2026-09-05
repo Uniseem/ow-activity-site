@@ -1,292 +1,276 @@
-import {
-  BadgeCheck,
-  Clock,
-  Eye,
-  EyeOff,
-  ShieldAlert,
-  UserRound,
-} from "lucide-react";
-
+import Link from "next/link";
 import { updateProfileAction } from "@/app/actions";
 import { ActionButton } from "@/components/action-button";
 import { Avatar } from "@/components/avatar";
+import { PageHeading } from "@/components/page-heading";
+import {
+  ButtonLink,
+  Card,
+  CheckField,
+  InputField,
+  Notice,
+  SelectField,
+  StatusChip,
+  TextAreaField,
+} from "@/components/ui";
 import { requireUser } from "@/lib/auth";
-import { reviewLabels, roleLabels, userStatusLabels } from "@/lib/format";
+import { OAuthConnections } from "@/components/oauth-connections";
+import { oauthMessages } from "@/lib/oauth/shared";
+import {
+  registrationStatusLabels,
+  reviewLabels,
+  roleLabels,
+  userStatusLabels,
+} from "@/lib/format";
+import { prisma } from "@/lib/prisma";
+import { formatEventDate } from "@/lib/event-date";
 
 export const dynamic = "force-dynamic";
-
-type MePageProps = {
+export default async function MePage({
+  searchParams,
+}: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
-};
-
-export default async function MePage({ searchParams }: MePageProps) {
+}) {
   const user = await requireUser();
-  const params = searchParams ? await searchParams : {};
+  const query = searchParams ? await searchParams : {};
   const profile = user.profile;
-  const saved = params.saved === "profile";
-  const registered = params.registered === "1";
-  const error = typeof params.error === "string" ? params.error : "";
-  const externalAvatarUrl = profile?.avatarUrl?.startsWith("http")
-    ? profile.avatarUrl
-    : "";
-
+  const registrations = await prisma.eventRegistration.findMany({
+    where: {
+      userId: user.id,
+      status: { not: "CANCELLED" },
+      event: { status: { not: "DRAFT" } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    select: {
+      id: true,
+      status: true,
+      event: { select: { id: true, title: true, startTime: true } },
+    },
+  });
+  const errors: Record<string, string> = {
+    "avatar-size": "头像不能超过 512 KB。",
+    "avatar-type": "头像只支持 PNG、JPEG、WebP 或 GIF。",
+    profile: "资料格式有误，请检查后重新提交。",
+  };
+  const error =
+    typeof query.error === "string" ? errors[query.error] : undefined;
   return (
-    <main className="page-shell grid gap-6 lg:grid-cols-[320px_1fr]">
-      <aside className="grid content-start gap-4">
-        <section className="rounded-md border border-black/10 bg-white p-5 shadow-sm">
-          <div className="flex items-start gap-4">
+    <main className="page-shell">
+      <PageHeading title="个人中心" />
+      {typeof query.oauth === "string" && oauthMessages[query.oauth] ? (
+        <div className="mb-5">
+          <Notice tone={query.oauth === "linked" ? "success" : "warning"}>
+            {oauthMessages[query.oauth]}
+          </Notice>
+        </div>
+      ) : null}
+      <nav className="profile-section-nav" aria-label="个人中心分区">
+        <Link href="#public-profile">公开资料</Link>
+        <Link href="#private-profile">私密资料</Link>
+        <Link href="#my-activities">我的报名</Link>
+        <Link href="#account-security">登录方式</Link>
+      </nav>
+      <div className="profile-layout">
+        <aside className="grid gap-4">
+          <Card className="profile-summary gap-5 p-6">
             <Avatar
               src={profile?.avatarUrl}
               name={profile?.displayName ?? user.username}
               size="lg"
             />
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-black">
+            <div>
+              <h2 className="break-words text-xl font-semibold">
                 {profile?.displayName ?? user.username}
-              </h1>
-              <p className="mt-1 text-sm font-semibold text-[var(--muted)]">
-                @{user.username}
-              </p>
+              </h2>
+              <p className="mt-1 text-sm text-muted">@{user.username}</p>
             </div>
-          </div>
-
-          <div className="mt-5 grid gap-2 text-sm">
-            <StatusLine
-              icon={<UserRound className="h-4 w-4" />}
-              label="账号状态"
-              value={userStatusLabels[user.status]}
-            />
-            <StatusLine
-              icon={<ShieldAlert className="h-4 w-4" />}
-              label="资料审核"
-              value={
-                profile ? reviewLabels[profile.reviewStatus] : "未填写"
-              }
-            />
-            <StatusLine
-              icon={<Eye className="h-4 w-4" />}
-              label="公开内容"
-              value="头像 / 昵称 / 宣言"
-            />
-            <StatusLine
-              icon={<EyeOff className="h-4 w-4" />}
-              label="私密内容"
-              value="战网 / 联系方式"
-            />
-          </div>
-        </section>
-
-        {registered ? (
-          <Message tone="info">注册已提交，请完善资料后等待管理员审核。</Message>
-        ) : null}
-        {saved ? <Message tone="success">资料已保存，公开信息等待审核。</Message> : null}
-        {error === "avatar-size" ? (
-          <Message tone="warning">头像不能超过 512 KB。</Message>
-        ) : null}
-        {error === "avatar-type" ? (
-          <Message tone="warning">头像只支持 PNG、JPEG、WebP 或 GIF。</Message>
-        ) : null}
-        {error === "profile" ? (
-          <Message tone="warning">资料格式有误，请检查后重新提交。</Message>
-        ) : null}
-        {profile?.reviewNote ? (
-          <Message tone="warning">审核备注：{profile.reviewNote}</Message>
-        ) : null}
-      </aside>
-
-      <section className="rounded-md border border-black/10 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.12em] text-[var(--teal)]">
-              Profile
-            </p>
-            <h2 className="mt-1 text-2xl font-black">我的资料</h2>
-          </div>
-          <span className="inline-flex items-center gap-2 rounded-md border border-black/10 px-3 py-2 text-sm font-bold text-[var(--muted)]">
-            <Clock className="h-4 w-4" />
-            修改后重新审核
-          </span>
-        </div>
-
-        <form action={updateProfileAction} className="mt-6 grid gap-6">
-          <fieldset className="grid gap-4">
-            <legend className="mb-1 text-base font-black">公开卡片</legend>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="公开昵称" name="displayName" required defaultValue={profile?.displayName ?? ""} maxLength={20} />
-              <Label label="上传头像">
-                <input
-                  className="focus-ring min-h-11 rounded-md border border-black/15 px-3 py-2 text-sm"
-                  name="avatarFile"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
+            {profile?.slogan ? (
+              <p className="text-sm leading-6 text-muted">{profile.slogan}</p>
+            ) : null}
+            <div className="grid gap-3 border-t border-separator pt-5">
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-muted">账号状态</span>
+                <StatusChip
+                  status={user.status}
+                  label={userStatusLabels[user.status]}
                 />
-                <span className="text-xs font-medium text-[var(--muted)]">
-                  PNG、JPEG、WebP 或 GIF，最大 512 KB。新头像需管理员重新审核。
-                </span>
-              </Label>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-muted">资料审核</span>
+                <StatusChip
+                  status={profile?.reviewStatus ?? "PENDING"}
+                  label={
+                    profile ? reviewLabels[profile.reviewStatus] : "未填写"
+                  }
+                />
+              </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="或使用头像链接" name="avatarUrl" defaultValue={externalAvatarUrl} placeholder="https://..." />
-              {profile?.avatarUrl ? (
-                <label className="flex items-center gap-2 self-end rounded-md bg-[#f5f7fb] px-3 py-3 text-sm font-semibold">
-                  <input name="removeAvatar" type="checkbox" />
-                  删除当前头像
-                </label>
-              ) : null}
+            <ButtonLink href="/events" variant="secondary" className="w-full">
+              查看活动
+            </ButtonLink>
+          </Card>
+          {user.role !== "ADMIN" ? (
+            <Notice>
+              公开资料修改后需重新审核。账号与资料均通过审核后即可报名。
+            </Notice>
+          ) : null}
+          {profile?.reviewNote ? (
+            <Notice tone="warning">审核备注：{profile.reviewNote}</Notice>
+          ) : null}
+          <Card id="my-activities" className="gap-4 p-5">
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold">我的报名</h2>
             </div>
-            <Label label="公开宣言">
-              <textarea
-                className="focus-ring min-h-24 resize-y rounded-md border border-black/15 px-3 py-2 text-base"
-                name="slogan"
-                maxLength={80}
-                required
-                defaultValue={profile?.slogan ?? ""}
-              />
-            </Label>
-          </fieldset>
-
-          <fieldset className="grid gap-4">
-            <legend className="mb-1 text-base font-black">管理员可见资料</legend>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="战网 ID" name="battleTag" defaultValue={profile?.battleTag ?? ""} />
-              <Label label="常用位置">
-                <select
-                  className="focus-ring min-h-11 rounded-md border border-black/15 px-3 text-base"
-                  name="mainRole"
-                  defaultValue={profile?.mainRole ?? ""}
-                >
-                  <option value="">暂不选择</option>
-                  {Object.entries(roleLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </Label>
-              <Field
-                label="常用英雄"
-                name="mainHeroes"
-                defaultValue={profile?.mainHeroes.join("，") ?? ""}
-                placeholder="安娜，源氏，莱因哈特"
-              />
-              <Field label="段位" name="rank" defaultValue={profile?.rank ?? ""} />
-              <Field
-                label="常在线时间"
-                name="onlineTime"
-                defaultValue={profile?.onlineTime ?? ""}
-                placeholder="周五/周六晚"
-              />
-              <Field
-                label="联系方式"
-                name="contact"
-                defaultValue={profile?.contact ?? ""}
-                placeholder="QQ / 微信 / Discord，可留空"
-              />
-            </div>
-            <Label label="补充备注">
-              <textarea
-                className="focus-ring min-h-28 resize-y rounded-md border border-black/15 px-3 py-2 text-base"
-                name="extraNote"
-                maxLength={300}
-                defaultValue={profile?.extraNote ?? ""}
-              />
-            </Label>
-          </fieldset>
-
-          <div className="flex justify-end">
-            <ActionButton className="bg-[var(--orange)] text-white hover:bg-[#dd6815]">
-              保存资料
-            </ActionButton>
-          </div>
-        </form>
-      </section>
+            {registrations.length ? (
+              <div className="grid gap-4">
+                {registrations.map((registration) => (
+                  <Link
+                    key={registration.id}
+                    href={`/events/${registration.event.id}`}
+                    className="grid gap-2 border-t border-separator pt-4"
+                  >
+                    <span className="flex items-start justify-between gap-2 text-sm font-medium">
+                      {registration.event.title}
+                    </span>
+                    <span className="text-sm text-muted">
+                      {formatEventDate(registration.event.startTime)}
+                    </span>
+                    <StatusChip
+                      status={registration.status}
+                      label={registrationStatusLabels[registration.status]}
+                    />
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted">暂无报名记录。</p>
+            )}
+          </Card>
+        </aside>
+        <div className="grid min-w-0 gap-4">
+          {query.registered === "1" ? (
+            <Notice tone="success">
+              注册成功！请完善资料，等待管理员审核。
+            </Notice>
+          ) : null}
+          {query.saved === "profile" ? (
+            <Notice tone="success">
+              {user.role === "ADMIN"
+                ? "资料已保存。"
+                : "资料已保存，请等待管理员审核。"}
+            </Notice>
+          ) : null}
+          {error ? <Notice tone="danger">{error}</Notice> : null}
+          <Card className="p-6 sm:p-8">
+            <form action={updateProfileAction} className="grid gap-8">
+              <fieldset className="form-section" id="public-profile">
+                <legend>公开资料</legend>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <InputField
+                    label="公开昵称"
+                    name="displayName"
+                    required
+                    minLength={2}
+                    maxLength={20}
+                    defaultValue={profile?.displayName ?? ""}
+                  />
+                  <SelectField
+                    label="常用位置"
+                    name="mainRole"
+                    defaultValue={profile?.mainRole ?? ""}
+                    options={{ "": "暂不选择", ...roleLabels }}
+                  />
+                  <InputField
+                    label="上传头像"
+                    name="avatarFile"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    description="PNG、JPEG、WebP 或 GIF，最大 512 KB。"
+                  />
+                  <InputField
+                    label="或使用头像链接"
+                    name="avatarUrl"
+                    type="url"
+                    defaultValue={
+                      profile?.avatarUrl?.startsWith("http")
+                        ? profile.avatarUrl
+                        : ""
+                    }
+                    placeholder="https://…"
+                  />
+                </div>
+                {profile?.avatarUrl ? (
+                  <CheckField name="removeAvatar">删除当前头像</CheckField>
+                ) : null}
+                <InputField
+                  label="常用英雄"
+                  name="mainHeroes"
+                  defaultValue={profile?.mainHeroes.join("，") ?? ""}
+                  placeholder="安娜，源氏，莱因哈特"
+                  description="多个英雄用逗号分隔。"
+                />
+                <TextAreaField
+                  label="公开宣言"
+                  name="slogan"
+                  required
+                  maxLength={80}
+                  defaultValue={profile?.slogan ?? ""}
+                  description="最多 80 字。"
+                />
+              </fieldset>
+              <fieldset
+                className="form-section border-t border-separator pt-7"
+                id="private-profile"
+              >
+                <legend>私密资料</legend>
+                <p className="text-sm leading-6 text-muted">
+                  仅你和管理员可见，用于安排活动与联系。
+                </p>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <InputField
+                    label="战网 ID"
+                    name="battleTag"
+                    defaultValue={profile?.battleTag ?? ""}
+                    placeholder="昵称#1234"
+                  />
+                  <InputField
+                    label="段位"
+                    name="rank"
+                    defaultValue={profile?.rank ?? ""}
+                    placeholder="填写你的当前段位"
+                  />
+                  <InputField
+                    label="常在线时间"
+                    name="onlineTime"
+                    defaultValue={profile?.onlineTime ?? ""}
+                    placeholder="周五、周六晚上"
+                  />
+                  <InputField
+                    label="联系方式"
+                    name="contact"
+                    defaultValue={profile?.contact ?? ""}
+                    placeholder="QQ / 微信 / Discord，可留空"
+                  />
+                </div>
+                <TextAreaField
+                  label="补充备注"
+                  name="extraNote"
+                  maxLength={300}
+                  defaultValue={profile?.extraNote ?? ""}
+                  placeholder="还有什么想告诉管理员的？"
+                />
+              </fieldset>
+              <div className="flex justify-end border-t border-separator pt-5">
+                <ActionButton pendingLabel="保存中…">保存资料</ActionButton>
+              </div>
+            </form>
+          </Card>
+          <section id="account-security">
+            <OAuthConnections userId={user.id} />
+          </section>
+        </div>
+      </div>
     </main>
-  );
-}
-
-function StatusLine({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-md bg-[#f5f7fb] px-3 py-2">
-      <span className="inline-flex items-center gap-2 font-semibold text-[var(--muted)]">
-        {icon}
-        {label}
-      </span>
-      <span className="font-black">{value}</span>
-    </div>
-  );
-}
-
-function Message({
-  children,
-  tone,
-}: {
-  children: React.ReactNode;
-  tone: "info" | "success" | "warning";
-}) {
-  const styles = {
-    info: "border-[var(--teal)]/30 bg-cyan-50 text-[#0c6f7b]",
-    success: "border-[var(--green)]/30 bg-green-50 text-[#387a47]",
-    warning: "border-[var(--orange)]/30 bg-orange-50 text-[#9b4f12]",
-  };
-
-  return (
-    <p className={`rounded-md border px-4 py-3 text-sm font-semibold ${styles[tone]}`}>
-      {tone === "success" ? (
-        <BadgeCheck className="mr-2 inline h-4 w-4 align-text-bottom" />
-      ) : null}
-      {children}
-    </p>
-  );
-}
-
-function Label({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="grid gap-2 text-sm font-semibold">
-      {label}
-      {children}
-    </label>
-  );
-}
-
-function Field({
-  label,
-  name,
-  defaultValue,
-  required,
-  maxLength,
-  placeholder,
-}: {
-  label: string;
-  name: string;
-  defaultValue?: string;
-  required?: boolean;
-  maxLength?: number;
-  placeholder?: string;
-}) {
-  return (
-    <Label label={label}>
-      <input
-        className="focus-ring min-h-11 rounded-md border border-black/15 px-3 text-base"
-        name={name}
-        required={required}
-        maxLength={maxLength}
-        defaultValue={defaultValue}
-        placeholder={placeholder}
-      />
-    </Label>
   );
 }

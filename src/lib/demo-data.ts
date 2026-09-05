@@ -1,17 +1,20 @@
-const nextSaturday = new Date();
-nextSaturday.setDate(nextSaturday.getDate() + ((6 - nextSaturday.getDay() + 7) % 7 || 7));
-nextSaturday.setHours(20, 30, 0, 0);
-
-const nextFriday = new Date(nextSaturday);
-nextFriday.setDate(nextFriday.getDate() - 1);
-nextFriday.setHours(22, 0, 0, 0);
+import { DAY_MS, parseShanghaiDate, shanghaiDateValue } from "@/lib/event-date";
+const today = parseShanghaiDate(shanghaiDateValue())!;
+const weekday = new Date(today.getTime() + 8 * 3_600_000).getUTCDay();
+const nextSaturday = new Date(
+  today.getTime() + ((6 - weekday + 7) % 7 || 7) * DAY_MS,
+);
+const nextFriday = new Date(nextSaturday.getTime() - 1);
 
 export const demoEvents = [
   {
     id: "demo-weekend-scrim",
+    coverUrl: "",
     title: "周末内战",
     description: "轻松组队，按报名位置做基础平衡，优先照顾能全程语音的玩家。",
     type: "SCRIM",
+    customType: null,
+    signupClosed: false,
     status: "OPEN",
     startTime: nextSaturday,
     signupDeadline: nextFriday,
@@ -22,12 +25,15 @@ export const demoEvents = [
   },
   {
     id: "demo-custom-night",
+    coverUrl: "",
     title: "自定义娱乐房",
     description: "快速模式规则混合英雄限制，适合新朋友一起熟悉队伍节奏。",
     type: "CUSTOM",
+    customType: "英雄挑战",
+    signupClosed: false,
     status: "OPEN",
     startTime: new Date(nextSaturday.getTime() + 1000 * 60 * 60 * 24 * 3),
-    signupDeadline: new Date(nextSaturday.getTime() + 1000 * 60 * 60 * 24 * 2),
+    signupDeadline: new Date(nextSaturday.getTime() + DAY_MS * 3 - 1),
     maxParticipants: 10,
     requirements: "能语音优先，不强制段位。",
     voiceChannel: "Discord / 开黑啦均可。",

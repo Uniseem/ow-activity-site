@@ -1,35 +1,31 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Button, Spinner, type ButtonProps } from "@heroui/react";
 import { useFormStatus } from "react-dom";
 
-type ActionButtonProps = {
+type ActionButtonProps = Omit<ButtonProps, "children"> & {
   children: React.ReactNode;
-  className?: string;
   pendingLabel?: string;
-  name?: string;
-  value?: string;
 };
 
 export function ActionButton({
   children,
-  className = "",
   pendingLabel = "处理中",
-  name,
-  value,
+  isDisabled,
+  ...props
 }: ActionButtonProps) {
   const { pending } = useFormStatus();
-
   return (
-    <button
+    <Button
+      {...props}
       type="submit"
-      name={name}
-      value={value}
-      disabled={pending}
-      className={`focus-ring inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${className}`}
+      isDisabled={isDisabled || pending}
+      isPending={pending}
     >
-      {pending ? <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> : null}
+      {pending ? (
+        <Spinner size="sm" color="current" aria-hidden="true" />
+      ) : null}
       {pending ? pendingLabel : children}
-    </button>
+    </Button>
   );
 }

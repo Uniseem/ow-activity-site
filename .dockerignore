@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.vercel
+.open-next
+.wrangler
+.env*
+**/.env*
+*.tsbuildinfo
+*.log
+coverage
+backups
+*.zip
+src/generated
+tests
+docs

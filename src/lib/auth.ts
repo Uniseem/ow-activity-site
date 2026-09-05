@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { canSetUpAdmin } from "@/lib/admin-setup";
 
 export const SESSION_COOKIE = "ow_activity_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14;
@@ -50,7 +51,7 @@ export async function destroySession() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getCurrentUser() {
+export async function getCurrentSession() {
   if (!isDatabaseConfigured()) {
     return null;
   }
@@ -76,7 +77,11 @@ export async function getCurrentUser() {
     return null;
   }
 
-  return session.user;
+  return session;
+}
+
+export async function getCurrentUser() {
+  return (await getCurrentSession())?.user ?? null;
 }
 
 export async function requireUser() {
@@ -90,6 +95,9 @@ export async function requireUser() {
 }
 
 export async function requireAdmin() {
+  if (isDatabaseConfigured() && (await canSetUpAdmin(prisma))) {
+    redirect("/admin/setup");
+  }
   const user = await requireUser();
 
   if (user.role !== "ADMIN" || user.status !== "APPROVED") {

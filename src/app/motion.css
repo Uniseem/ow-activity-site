@@ -1,0 +1,207 @@
+@layer base {
+  :root {
+    --motion-fast: 160ms;
+    --motion-normal: 260ms;
+    --motion-slow: 420ms;
+    --motion-ease: cubic-bezier(0.22, 0.68, 0, 1);
+    --motion-enter: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-exit: cubic-bezier(0.4, 0, 1, 1);
+
+    /* Keep HeroUI's interaction states while giving them one motion language. */
+    --ease-smooth: var(--motion-ease);
+    --ease-out: var(--motion-enter);
+    --ease-out-quad: var(--motion-ease);
+    --ease-out-quart: var(--motion-enter);
+    --ease-out-fluid: var(--motion-enter);
+    --default-transition-timing-function: var(--motion-ease);
+  }
+}
+
+@layer components {
+  :where(a:not(.button), summary) {
+    transition:
+      color var(--motion-fast) var(--motion-ease),
+      background-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease);
+  }
+
+  :is(.button, .dropdown__trigger, .modal__trigger, .close-button, .menu-item) {
+    transition:
+      transform var(--motion-normal) var(--motion-enter),
+      color var(--motion-fast) var(--motion-ease),
+      background-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease);
+  }
+
+  :is(.input, .textarea, .select__trigger, .input-group, .article-editable) {
+    transition:
+      background-color var(--motion-fast) var(--motion-ease),
+      border-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-normal) var(--motion-enter);
+  }
+
+  :is(.checkbox__control, .switch__control, .switch__thumb, .radio__control) {
+    transition-timing-function: var(--motion-ease);
+  }
+
+  .checkbox__control::before,
+  .checkbox [data-slot="checkbox-default-indicator--checkmark"],
+  .checkbox[data-selected="true"]
+    [data-slot="checkbox-default-indicator--checkmark"],
+  .menu-item [data-slot="menu-item-indicator--checkmark"],
+  .menu-item:is(
+      [aria-checked="true"],
+      [aria-selected="true"],
+      [data-selected="true"]
+    )
+    [data-slot="menu-item-indicator--checkmark"] {
+    transition-timing-function: var(--motion-ease);
+  }
+
+  .checkbox [data-slot="checkbox-default-indicator--checkmark"] {
+    transition-property: stroke-dashoffset, opacity, color;
+  }
+
+  :is(.event-card.card, .article-card > .card, .player-card) {
+    transition:
+      translate var(--motion-normal) var(--motion-enter),
+      box-shadow var(--motion-normal) var(--motion-ease);
+  }
+
+  :is(.event-card-image, .article-card-cover) img {
+    transition: scale var(--motion-slow) var(--motion-enter);
+  }
+
+  .tabs__indicator {
+    transition-duration: var(--motion-normal);
+    transition-timing-function: var(--motion-enter);
+  }
+
+  .tabs__tab,
+  .accordion__trigger,
+  .accordion__indicator,
+  .accordion__panel,
+  .progress-bar__fill {
+    transition-timing-function: var(--motion-ease);
+  }
+
+  .article-optional-settings summary svg {
+    transition: transform var(--motion-normal) var(--motion-enter);
+  }
+
+  /* React Aria owns mounting and placement; only retime its existing animations. */
+  :is(
+    .modal__backdrop,
+    .modal__container,
+    .dropdown__popover,
+    .popover,
+    .select__popover,
+    .tooltip
+  )[data-entering="true"] {
+    animation-duration: var(--motion-normal);
+    animation-timing-function: var(--motion-enter);
+  }
+
+  :is(
+    .modal__backdrop,
+    .modal__container,
+    .dropdown__popover,
+    .popover,
+    .select__popover,
+    .tooltip
+  )[data-exiting="true"] {
+    animation-duration: var(--motion-fast);
+    animation-timing-function: var(--motion-exit);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @layer components {
+    :is(.alert, [role="alert"]):not(:empty):not(.sr-only),
+    .tabs__panel:not([hidden]):not([data-exiting="true"]) {
+      animation: site-feedback-in var(--motion-normal) var(--motion-enter);
+    }
+
+    :is(.admin-disclosure, .article-optional-settings)[open] > :not(summary) {
+      animation: site-feedback-in var(--motion-normal) var(--motion-enter);
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    @layer components {
+      :is(.event-card.card, .article-card > .card, .player-card):hover {
+        translate: 0 -3px;
+        box-shadow:
+          var(--surface-shadow, 0 1px 2px #00000008),
+          0 10px 24px color-mix(in srgb, var(--foreground) 8%, transparent);
+      }
+
+      :is(.event-card, .article-card):hover
+        :is(.event-card-image, .article-card-cover)
+        img {
+        scale: 1.035;
+      }
+    }
+  }
+
+  @layer components {
+    :is(.event-card, .article-card):focus-within
+      :is(.event-card-image, .article-card-cover)
+      img {
+      scale: 1.035;
+    }
+  }
+
+  /* Browsers without intrinsic-size transitions keep native details behavior. */
+  @supports selector(::details-content) and (interpolate-size: allow-keywords) {
+    @layer components {
+      :is(.admin-disclosure, .article-optional-settings)::details-content {
+        interpolate-size: allow-keywords;
+        block-size: 0;
+        overflow: clip;
+        content-visibility: hidden;
+        transition:
+          block-size var(--motion-normal) var(--motion-ease),
+          content-visibility var(--motion-normal) var(--motion-ease)
+            allow-discrete;
+      }
+
+      :is(
+          .admin-disclosure,
+          .article-optional-settings
+        )[open]::details-content {
+        block-size: auto;
+        content-visibility: visible;
+      }
+
+      :is(.admin-disclosure, .article-optional-settings)[open] > :not(summary) {
+        animation: none;
+      }
+    }
+  }
+}
+
+@keyframes site-feedback-in {
+  from {
+    opacity: 0.6;
+    translate: 0 4px;
+  }
+  to {
+    opacity: 1;
+    translate: none;
+  }
+}
+
+/* Override library utilities too, and preserve their animation completion events. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

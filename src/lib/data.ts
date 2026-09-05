@@ -2,6 +2,7 @@ import "server-only";
 
 import { demoEvents, demoProfiles } from "@/lib/demo-data";
 import { isDatabaseConfigured, prisma } from "@/lib/prisma";
+import { syncEventStatuses } from "@/lib/event-schedule";
 
 export async function getHomeData() {
   if (!isDatabaseConfigured()) {
@@ -12,6 +13,7 @@ export async function getHomeData() {
     };
   }
 
+  await syncEventStatuses();
   const [events, profiles] = await Promise.all([
     prisma.event.findMany({
       where: {
@@ -74,6 +76,7 @@ export async function getPublicEvents() {
     return demoEvents;
   }
 
+  await syncEventStatuses();
   return prisma.event.findMany({
     where: {
       status: { not: "DRAFT" },
@@ -93,6 +96,7 @@ export async function getPublicEvent(id: string) {
     return demoEvents.find((event) => event.id === id) ?? null;
   }
 
+  await syncEventStatuses();
   return prisma.event.findFirst({
     where: {
       id,

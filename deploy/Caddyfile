@@ -1,0 +1,7 @@
+{$SITE_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy app:3000 {
+        # Preserve streamed Next.js responses.
+        flush_interval -1
+    }
+}
