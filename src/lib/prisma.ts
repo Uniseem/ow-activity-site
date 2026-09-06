@@ -2,9 +2,9 @@ import "server-only";
 
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { attachDatabasePool } from "@vercel/functions";
-import { Pool } from "pg";
+import type { PrismaPg } from "@prisma/adapter-pg";
+import type { attachDatabasePool } from "@vercel/functions";
+import type { Pool } from "pg";
 
 import { PrismaClient, Prisma } from "@/generated/prisma/client";
 import type {
@@ -20,6 +20,12 @@ type D1Runtime = {
   PrismaClient: typeof D1PrismaClient;
   Prisma: typeof D1PrismaNamespace;
   PrismaD1: typeof PrismaD1;
+};
+
+type PgRuntime = {
+  PrismaPg: typeof PrismaPg;
+  attachDatabasePool: typeof attachDatabasePool;
+  Pool: typeof Pool;
 };
 
 let d1Runtime: D1Runtime | undefined;
@@ -39,6 +45,25 @@ function loadD1Runtime(): D1Runtime {
     PrismaD1: adapter.PrismaD1,
   };
   return d1Runtime;
+}
+
+let pgRuntime: PgRuntime | undefined;
+function loadPgRuntime(): PgRuntime {
+  if (pgRuntime) return pgRuntime;
+  const nodeRequire = createRequire(join(process.cwd(), "package.json"));
+  const adapter = nodeRequire("@prisma/adapter-pg") as {
+    PrismaPg: typeof PrismaPg;
+  };
+  const vercel = nodeRequire("@vercel/functions") as {
+    attachDatabasePool: typeof attachDatabasePool;
+  };
+  const pg = nodeRequire("pg") as { Pool: typeof Pool };
+  pgRuntime = {
+    PrismaPg: adapter.PrismaPg,
+    attachDatabasePool: vercel.attachDatabasePool,
+    Pool: pg.Pool,
+  };
+  return pgRuntime;
 }
 
 const FALLBACK_DATABASE_URL =
@@ -66,6 +91,7 @@ function createPrismaClient() {
     assertDatabaseConfigured();
   }
 
+  const { Pool, PrismaPg, attachDatabasePool } = loadPgRuntime();
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL?.trim() || FALLBACK_DATABASE_URL,
     // 本地 Prisma dev 基于单连接的 PGlite，串行查询避免并发协议冲突。
@@ -75,9 +101,7 @@ function createPrismaClient() {
   });
 
   attachDatabasePool(pool);
-  const adapter = new PrismaPg(pool);
-
-  return new PrismaClient({ adapter });
+  return new PrismaClient({ adapter: new PrismaPg(pool) });
 }
 
 const d1Clients = new WeakMap<D1Database, PrismaClient>();

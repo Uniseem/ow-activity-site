@@ -9,6 +9,11 @@
     { "binding": "WORKER_SELF_REFERENCE", "service": "ow-activity-site" },
   ],
   "vars": { "DATABASE_PROVIDER": "d1" },
+  "alias": {
+    "pg": "./src/lib/empty-node-module.ts",
+    "pg-cloudflare": "./src/lib/empty-node-module.ts",
+    "@prisma/adapter-pg": "./src/lib/empty-node-module.ts",
+  },
   "d1_databases": [
     {
       "binding": "DB",
