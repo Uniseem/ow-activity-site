@@ -3,9 +3,10 @@
 import { Dropdown, buttonVariants } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { canSeeAdminHref } from "@/lib/admin-permissions";
 import { adminNavigation, isAdminNavActive } from "@/lib/admin-navigation";
 
-export function AdminNav() {
+export function AdminNav({ permissions = [] }: { permissions?: string[] }) {
   const pathname = usePathname();
   const current = adminNavigation
     .flatMap((group) => group.links)
@@ -28,6 +29,13 @@ export function AdminNav() {
           <Dropdown.Menu aria-label="后台导航">
             {adminNavigation
               .flatMap((group) => group.links)
+              .filter((link) =>
+                canSeeAdminHref(link.href, {
+                  role: "ADMIN",
+                  status: "APPROVED",
+                  adminPermissions: permissions,
+                }),
+              )
               .map(({ href, label, icon: Icon }) => (
                 <Dropdown.Item
                   id={href}

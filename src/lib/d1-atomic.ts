@@ -38,7 +38,7 @@ export async function createD1User(input: {
   statements.push(
     db
       .prepare(
-        'INSERT INTO "User" ("id","username","passwordHash","role","status","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?)',
+        'INSERT INTO "User" ("id","username","passwordHash","role","status","primaryAdmin","adminPermissions","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?,?,?)',
       )
       .bind(
         id,
@@ -46,6 +46,8 @@ export async function createD1User(input: {
         input.passwordHash,
         input.initialAdmin ? "ADMIN" : "USER",
         input.initialAdmin ? "APPROVED" : "PENDING",
+        input.initialAdmin ? 1 : 0,
+        "[]",
         now,
         now,
       ),
@@ -80,7 +82,7 @@ export async function reviewD1Profile(
   profileId: string,
   status: "APPROVED" | "REJECTED",
   note: string | null,
-  adminId: string,
+  adminId: string | null,
 ) {
   const db = getD1(),
     now = d1Date();
@@ -95,7 +97,7 @@ export async function reviewD1Profile(
       .bind(status, note, adminId, now, now, profileId),
     db
       .prepare(
-        'UPDATE "User" SET "status"=?,"updatedAt"=? WHERE "id"=(SELECT "userId" FROM "Profile" WHERE "id"=?)',
+        `UPDATE "User" SET "status"=?,"updatedAt"=? WHERE "id"=(SELECT "userId" FROM "Profile" WHERE "id"=?) AND "role"!='ADMIN'`,
       )
       .bind(status, now, profileId),
     clearGuards(),

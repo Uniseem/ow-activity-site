@@ -18,6 +18,7 @@ import { FloatingHeader } from "@/components/floating-header";
 import { RouteMotion } from "@/components/route-motion";
 import { ButtonLink } from "@/components/ui";
 import { AdminNav } from "@/components/admin-nav";
+import { canSeeAdminHref } from "@/lib/admin-permissions";
 import { adminNavigation, isAdminNavActive } from "@/lib/admin-navigation";
 import {
   SiteLogo,
@@ -25,7 +26,12 @@ import {
   useSiteText,
 } from "@/components/site-content";
 
-type NavUser = { name: string; avatarUrl?: string | null; isAdmin: boolean };
+type NavUser = {
+  name: string;
+  avatarUrl?: string | null;
+  isAdmin: boolean;
+  permissions?: string[];
+};
 
 function Brand() {
   const t = useSiteText();
@@ -139,25 +145,35 @@ export function SiteNav({
           <aside className="site-sidebar" aria-label="管理后台侧栏">
             <Brand />
             <nav className="sidebar-nav" aria-label="管理导航">
-              {adminNavigation.map((group) => (
-                <div key={group.label}>
-                  <p className="sidebar-section-label">{group.label}</p>
-                  {group.links.map(({ href, label, icon: Icon }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      className={buttonVariants({
-                        variant: active(href) ? "secondary" : "ghost",
-                        className: "nav-link",
-                      })}
-                      aria-current={active(href) ? "page" : undefined}
-                    >
-                      <Icon size={18} />
-                      <span>{label}</span>
-                    </Link>
-                  ))}
-                </div>
-              ))}
+              {adminNavigation.map((group) => {
+                const links = group.links.filter((link) =>
+                  canSeeAdminHref(link.href, {
+                    role: "ADMIN",
+                    status: "APPROVED",
+                    adminPermissions: user.permissions,
+                  }),
+                );
+                if (!links.length) return null;
+                return (
+                  <div key={group.label}>
+                    <p className="sidebar-section-label">{group.label}</p>
+                    {links.map(({ href, label, icon: Icon }) => (
+                      <Link
+                        key={href}
+                        href={href}
+                        className={buttonVariants({
+                          variant: active(href) ? "secondary" : "ghost",
+                          className: "nav-link",
+                        })}
+                        aria-current={active(href) ? "page" : undefined}
+                      >
+                        <Icon size={18} />
+                        <span>{label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                );
+              })}
             </nav>
           </aside>
         ) : null}
@@ -170,7 +186,9 @@ export function SiteNav({
               <span className="admin-back-label">返回社区</span>
             </Link>
             <span className="admin-location">{pageLabel}</span>
-            {user?.isAdmin ? <AdminNav /> : null}
+            {user?.isAdmin ? (
+              <AdminNav permissions={user.permissions ?? []} />
+            ) : null}
             <AccountMenu user={user} loginHref={loginHref} />
           </FloatingHeader>
           <div className="site-workspace" id="page-content" tabIndex={-1}>

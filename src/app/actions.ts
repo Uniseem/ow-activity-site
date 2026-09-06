@@ -14,6 +14,13 @@ import {
   requireAdmin,
   requireUser,
 } from "@/lib/auth";
+import {
+  ADMIN_PERMISSIONS,
+  hasPermission,
+  isPrimaryAdmin,
+  planStaffAssignment,
+} from "@/lib/admin-permissions";
+import { applyProfileReview } from "@/lib/profile-review";
 import { avatarFileToDataUrl } from "@/lib/avatar-upload";
 import { assertDatabaseConfigured, prisma } from "@/lib/prisma";
 import { parseEventInput } from "@/lib/event-input";
@@ -22,7 +29,6 @@ import { syncEventStatuses } from "@/lib/event-schedule";
 import { isD1Database } from "@/lib/database-provider";
 import {
   createD1User,
-  reviewD1Profile,
   reviewD1Registration,
 } from "@/lib/d1-atomic";
 
@@ -118,6 +124,8 @@ export async function registerAction(
         });
 
     await createSession(user.id);
+    const { maybeAutoReviewByUserId } = await import("@/lib/ai/review");
+    await maybeAutoReviewByUserId(user.id);
   } catch (error) {
     if (error instanceof Error && /unique constraint/i.test(error.message)) {
       return { message: "这个用户名已经被注册。" };
@@ -241,7 +249,7 @@ export async function updateProfileAction(formData: FormData) {
 
   const reviewStatus = user.role === "ADMIN" ? "APPROVED" : "PENDING";
 
-  await prisma.profile.upsert({
+  const profile = await prisma.profile.upsert({
     where: { userId: user.id },
     create: {
       userId: user.id,
@@ -282,6 +290,11 @@ export async function updateProfileAction(formData: FormData) {
     });
   }
 
+  if (reviewStatus === "PENDING") {
+    const { maybeAutoReviewProfile } = await import("@/lib/ai/review");
+    await maybeAutoReviewProfile(profile.id);
+  }
+
   revalidatePath("/");
   revalidatePath("/players");
   revalidatePath("/me");
@@ -315,12 +328,12 @@ export async function reviewProfileAction(
   formData: FormData,
 ): Promise<AdminUserFormResult> {
   const admin = await getCurrentUser();
-  if (!admin || admin.role !== "ADMIN" || admin.status !== "APPROVED") {
+  if (!hasPermission(admin, "users")) {
     return {
       ok: false,
       authRequired: true,
       message:
-        "登录已失效或当前账号没有管理员权限。审核备注已保留，重新登录后可继续操作。",
+        "登录已失效或当前账号没有用户审核权限。审核备注已保留，重新登录后可继续操作。",
     };
   }
   const profileId = text(formData, "profileId");
@@ -338,29 +351,14 @@ export async function reviewProfileAction(
   const profileStatus = approved
     ? ("APPROVED" as const)
     : ("REJECTED" as const);
-  const userStatus = approved ? ("APPROVED" as const) : ("REJECTED" as const);
 
   try {
-    if (isD1Database()) {
-      await reviewD1Profile(profileId, profileStatus, note || null, admin.id);
-    } else
-      await prisma.$transaction(async (tx) => {
-        const profile = await tx.profile.update({
-          where: { id: profileId },
-          data: {
-            reviewStatus: profileStatus,
-            reviewNote: note || null,
-            reviewedById: admin.id,
-            reviewedAt: new Date(),
-          },
-          select: { userId: true },
-        });
-
-        await tx.user.update({
-          where: { id: profile.userId },
-          data: { status: userStatus },
-        });
-      });
+    await applyProfileReview({
+      profileId,
+      decision: profileStatus,
+      note: note || null,
+      reviewerId: admin.id,
+    });
   } catch {
     return {
       ok: false,
@@ -383,12 +381,12 @@ export async function updateUserStatusAction(
   formData: FormData,
 ): Promise<AdminUserFormResult> {
   const admin = await getCurrentUser();
-  if (!admin || admin.role !== "ADMIN" || admin.status !== "APPROVED") {
+  if (!hasPermission(admin, "users")) {
     return {
       ok: false,
       authRequired: true,
       message:
-        "登录已失效或当前账号没有管理员权限。当前选择已保留，重新登录后可继续操作。",
+        "登录已失效或当前账号没有用户管理权限。当前选择已保留，重新登录后可继续操作。",
     };
   }
   const userId = text(formData, "userId");
@@ -405,6 +403,22 @@ export async function updateUserStatusAction(
   }
 
   try {
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, primaryAdmin: true },
+    });
+    if (!target) {
+      return {
+        ok: false,
+        message: "账号状态更新失败，用户可能已发生变化。当前选择已保留，请重试。",
+      };
+    }
+    if (target.primaryAdmin || target.id === admin!.id) {
+      return { ok: false, message: "不能修改首位管理员或自己的账号状态。" };
+    }
+    if (target.role === "ADMIN" && !isPrimaryAdmin(admin)) {
+      return { ok: false, message: "次级管理员不能修改其他管理员的账号状态。" };
+    }
     await prisma.user.update({
       where: { id: userId },
       data: {
@@ -424,6 +438,55 @@ export async function updateUserStatusAction(
     ok: true,
     message: "账号状态已更新。",
     redirectTo: userManagementReturn(formData, "status"),
+  };
+}
+
+export async function assignStaffAction(
+  formData: FormData,
+): Promise<AdminUserFormResult> {
+  const admin = await getCurrentUser();
+  const userId = text(formData, "userId");
+  const action = text(formData, "staffAction") === "revoke" ? "revoke" : "save";
+  if (!userId) {
+    return { ok: false, message: "玩家信息无效，请刷新后重试。" };
+  }
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, status: true, primaryAdmin: true },
+  });
+  if (!target) {
+    return { ok: false, message: "找不到这位玩家，请刷新后重试。" };
+  }
+  const planned = planStaffAssignment({
+    actor: admin,
+    target,
+    action,
+    permissions: ADMIN_PERMISSIONS.filter(
+      (permission) => formData.get("permission-" + permission) === "on",
+    ),
+  });
+  if ("error" in planned) {
+    return {
+      ok: false,
+      authRequired: !isPrimaryAdmin(admin),
+      message: planned.error,
+    };
+  }
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: planned.data,
+    });
+  } catch {
+    return { ok: false, message: "权限更新失败，请稍后重试。" };
+  }
+  revalidatePath("/admin/users");
+  revalidatePath("/admin");
+  revalidatePath("/", "layout");
+  return {
+    ok: true,
+    message: action === "revoke" ? "已撤销次级管理员。" : "已保存次级管理员权限。",
+    redirectTo: userManagementReturn(formData, "staff"),
   };
 }
 
@@ -456,12 +519,12 @@ export async function createEventAction(
   formData: FormData,
 ): Promise<EventFormResult> {
   const admin = await getCurrentUser();
-  if (!admin || admin.role !== "ADMIN" || admin.status !== "APPROVED") {
+  if (!hasPermission(admin, "events")) {
     return {
       ok: false,
       authRequired: true,
       message:
-        "登录已失效或当前账号没有管理员权限。填写内容已保留，重新登录后可继续保存。",
+        "登录已失效或当前账号没有活动管理权限。填写内容已保留，重新登录后可继续保存。",
     };
   }
   const parsed = parseEventInput(eventFormInput(formData));
@@ -496,12 +559,12 @@ export async function updateEventAction(
   formData: FormData,
 ): Promise<EventFormResult> {
   const admin = await getCurrentUser();
-  if (!admin || admin.role !== "ADMIN" || admin.status !== "APPROVED") {
+  if (!hasPermission(admin, "events")) {
     return {
       ok: false,
       authRequired: true,
       message:
-        "登录已失效或当前账号没有管理员权限。填写内容已保留，重新登录后可继续保存。",
+        "登录已失效或当前账号没有活动管理权限。填写内容已保留，重新登录后可继续保存。",
     };
   }
   const eventId = text(formData, "eventId");
@@ -628,6 +691,7 @@ export async function cancelRegistrationAction(formData: FormData) {
 
 export async function reviewRegistrationAction(formData: FormData) {
   const admin = await requireAdmin();
+  if (!hasPermission(admin, "events")) redirect("/admin");
   const registrationId = text(formData, "registrationId");
   const eventId = text(formData, "eventId");
   const decision = text(formData, "decision");

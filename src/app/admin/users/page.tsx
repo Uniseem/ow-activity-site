@@ -2,6 +2,7 @@ import { Check, X } from "lucide-react";
 import type { Prisma } from "@/generated/prisma/client";
 import { reviewProfileAction, updateUserStatusAction } from "@/app/actions";
 import { ActionButton } from "@/components/action-button";
+import { AdminStaffForm } from "@/components/admin-staff-form";
 import { AdminUserForm } from "@/components/admin-user-form";
 import { Avatar } from "@/components/avatar";
 import { EmptyState, PageHeading } from "@/components/page-heading";
@@ -14,7 +15,12 @@ import {
   StatusChip,
   TextAreaField,
 } from "@/components/ui";
-import { requireAdmin } from "@/lib/auth";
+import {
+  adminRankLabel,
+  grantedPermissions,
+  isPrimaryAdmin,
+} from "@/lib/admin-permissions";
+import { requirePermission } from "@/lib/auth";
 import { reviewLabels, roleLabels, userStatusLabels } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
@@ -24,7 +30,7 @@ export default async function AdminUsersPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireAdmin();
+  const viewer = await requirePermission("users");
   const query = searchParams ? await searchParams : {};
   const status =
     typeof query.status === "string" &&
@@ -74,15 +80,17 @@ export default async function AdminUsersPage({
       ? "资料已通过审核，账号现已可参加活动。"
       : query.saved === "REJECTED"
         ? "资料已拒绝，玩家可查看备注后修改并重新提交。"
-        : query.saved === "status"
+        :     query.saved === "status"
           ? "账号状态已更新。"
-          : "";
+          : query.saved === "staff"
+            ? "管理员权限已更新。"
+            : "";
   const returnTo = href(status, page);
   return (
     <main className="page-shell">
       <PageHeading
         title="用户管理"
-        description="展开玩家查看资料并审核，账号管理放在资料下方。"
+        description="展开玩家查看资料并审核。首位管理员还可以在这里指定次级管理员并派发权限。"
       />
       <div className="admin-filter-bar">
         <nav aria-label="用户筛选" className="flex flex-wrap gap-1">
@@ -145,7 +153,9 @@ export default async function AdminUsersPage({
                       </h2>
                       <p className="mt-1 break-all text-xs font-normal text-muted">
                         @{user.username}
-                        {user.role === "ADMIN" ? " · 管理员" : ""}
+                        {user.role === "ADMIN"
+                          ? " · " + adminRankLabel(user)
+                          : ""}
                       </p>
                     </div>
                     <div className="admin-user-statuses flex flex-wrap gap-2">
@@ -276,6 +286,22 @@ export default async function AdminUsersPage({
                       </ActionButton>
                     </AdminUserForm>
                   </details>
+                  {isPrimaryAdmin(viewer) &&
+                  !user.primaryAdmin &&
+                  user.id !== viewer.id ? (
+                    <details className="admin-disclosure border-t border-border">
+                      <summary>次级管理员权限</summary>
+                      <AdminStaffForm
+                        userId={user.id}
+                        returnTo={returnTo}
+                        current={
+                          user.role === "ADMIN"
+                            ? grantedPermissions(user)
+                            : []
+                        }
+                      />
+                    </details>
+                  ) : null}
                 </div>
               </details>
             );

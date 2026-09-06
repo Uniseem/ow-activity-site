@@ -31,7 +31,12 @@ test("Cloudflare D1 原子注册、审批、OAuth、R2 和全量恢复", async (
   });
   const db = platform.env.DB;
   try {
-    for (const file of ["0001_init.sql", "0002_atomic_guards.sql"]) {
+    for (const file of [
+      "0001_init.sql",
+      "0002_atomic_guards.sql",
+      "0003_admin_permissions.sql",
+      "0004_ai_review.sql",
+    ]) {
       const sql = await readFile(
         `prisma/cloudflare/migrations/${file}`,
         "utf8",

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { hasPermission } from "@/lib/admin-permissions";
 import { getCurrentUser, SESSION_COOKIE } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { oauthOrigin, flowCookieName } from "@/lib/oauth/server";
@@ -32,7 +33,7 @@ async function limitedJson(request: Request): Promise<unknown> {
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return json({ message: "请先登录管理员账号。" }, 401);
-  if (user.role !== "ADMIN" || user.status !== "APPROVED") return json({ message: "只有管理员可以备份或恢复网站。" }, 403);
+  if (!hasPermission(user, "backup")) return json({ message: "只有获得备份权限的管理员可以备份或恢复网站。" }, 403);
   try {
     if (!isTrustedBackupOrigin(request.headers.get("origin"), oauthOrigin(new URL(request.url).origin))) return json({ message: "请求来源不正确。" }, 403);
     const input = backupRequestSchema.safeParse(await limitedJson(request));

@@ -184,16 +184,18 @@ export function CheckField({
   name,
   disabled,
   defaultSelected,
+  value = "on",
 }: {
   children: ReactNode;
   name: string;
   disabled?: boolean;
   defaultSelected?: boolean;
+  value?: string;
 }) {
   return (
     <Checkbox
       name={name}
-      value="on"
+      value={value}
       isDisabled={disabled}
       defaultSelected={defaultSelected}
     >

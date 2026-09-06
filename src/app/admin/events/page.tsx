@@ -8,7 +8,7 @@ import {
   InputField,
   StatusChip,
 } from "@/components/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { syncEventStatuses } from "@/lib/event-schedule";
 import { formatEventDate } from "@/lib/event-date";
@@ -21,7 +21,7 @@ export default async function AdminEventsPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireAdmin();
+  await requirePermission("events");
   await syncEventStatuses();
   const query = searchParams ? await searchParams : {};
   const filter =

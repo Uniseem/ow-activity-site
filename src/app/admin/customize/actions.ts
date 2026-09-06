@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { hasPermission } from "@/lib/admin-permissions";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateSiteConfiguration } from "@/lib/site-config";
@@ -17,6 +18,8 @@ export async function saveSiteSettingsAction(
   formData: FormData,
 ): Promise<SaveSiteResult> {
   const admin = await requireAdmin();
+  if (!hasPermission(admin, "customize"))
+    return { ok: false, message: "没有基本设置权限。" };
   const raw = formData.get("configuration");
   const revision = Number(formData.get("revision"));
   if (
@@ -88,7 +91,7 @@ export async function uploadSiteAssetAction(
   formData: FormData,
 ): Promise<{ url?: string; error?: string; authRequired?: boolean }> {
   const admin = await getCurrentUser();
-  if (!admin || admin.role !== "ADMIN" || admin.status !== "APPROVED") {
+  if (!hasPermission(admin, "customize")) {
     return {
       error:
         "登录已失效或当前账号没有管理员权限，请重新登录后上传。当前填写内容已保留。",

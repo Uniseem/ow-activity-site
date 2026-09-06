@@ -47,6 +47,8 @@ async function main() {
         passwordHash,
         role: "ADMIN",
         status: "APPROVED",
+        primaryAdmin: true,
+        adminPermissions: [],
         profile: {
           upsert: {
             create: {
@@ -66,6 +68,8 @@ async function main() {
         passwordHash,
         role: "ADMIN",
         status: "APPROVED",
+        primaryAdmin: true,
+        adminPermissions: [],
         profile: {
           create: {
             displayName: "活动管理员",

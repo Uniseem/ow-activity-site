@@ -1,6 +1,7 @@
 "use server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { hasPermission } from "@/lib/admin-permissions";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saveUpdateSettings } from "@/lib/updates/service";
@@ -15,6 +16,8 @@ export async function saveUpdateSettingsAction(
   form: FormData,
 ): Promise<UpdateSettingsResult> {
   const admin = await requireAdmin();
+  if (!hasPermission(admin, "updates"))
+    return { ...previous, ok: false, message: "没有版本更新权限。" };
   const input = z
     .object({
       repositoryUrl: z.string().max(300),

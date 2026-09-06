@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { hasPermission } from "@/lib/admin-permissions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -25,7 +26,7 @@ async function articleActionAdmin(formData: FormData) {
           "登录已过期或账号已切换。请在新标签页重新登录原管理员账号，再回来重试；当前内容仍保留。",
       },
     };
-  if (admin.role !== "ADMIN" || admin.status !== "APPROVED")
+  if (!hasPermission(admin, "articles"))
     return {
       error: {
         ok: false,

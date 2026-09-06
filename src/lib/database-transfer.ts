@@ -15,7 +15,7 @@ import {
 
 // Fixed identifiers only. Uploaded JSON never chooses a SQL table or column.
 const columns: Record<string, string[]> = {
-  User: "id username passwordHash role status createdAt updatedAt".split(" "),
+  User: "id username passwordHash role status primaryAdmin adminPermissions createdAt updatedAt".split(" "),
   Profile:
     "id userId avatarUrl displayName slogan battleTag mainRole mainHeroes rank onlineTime contact extraNote reviewStatus reviewNote reviewedById reviewedAt createdAt updatedAt".split(
       " ",
@@ -30,6 +30,10 @@ const columns: Record<string, string[]> = {
   ),
   UpdateSettings:
     "id repositoryUrl branch encryptedDeployHook revision checkKey checkResult checkedAt checkLease checkLeaseUntil deployRequestedAt deployRequestedSha deployJobId updatedById updatedAt".split(
+      " ",
+    ),
+  AiSettings:
+    "id preset baseUrl encryptedApiKey model autoReview revision updatedById updatedAt".split(
       " ",
     ),
   Event:
@@ -53,8 +57,8 @@ const dates = new Set(
     " ",
   ),
 );
-const jsonFields = new Set(["mainHeroes", "heroes", "values", "checkResult"]);
-const booleanFields = new Set(["enabled", "signupClosed", "voiceAvailable"]);
+const jsonFields = new Set(["mainHeroes", "heroes", "values", "checkResult", "adminPermissions"]);
+const booleanFields = new Set(["enabled", "signupClosed", "voiceAvailable", "primaryAdmin", "autoReview"]);
 const MAX_MEDIA_BYTES = 128 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
@@ -197,6 +201,7 @@ export async function replaceD1Snapshot(
     "AdminSetup",
     "OAuthConfig",
     "UpdateSettings",
+    "AiSettings",
     "SiteSettings",
     "SiteAsset",
   ])

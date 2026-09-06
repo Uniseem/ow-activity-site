@@ -1,3 +1,4 @@
+import { hasPermission } from "@/lib/admin-permissions";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -20,8 +21,8 @@ async function denied() {
   const user = await getCurrentUser();
   return !user
     ? json({ message: "请先登录。" }, 401)
-    : user.role !== "ADMIN" || user.status !== "APPROVED"
-      ? json({ message: "仅管理员可操作。" }, 403)
+    : !hasPermission(user, "updates")
+      ? json({ message: "没有版本更新权限。" }, 403)
       : null;
 }
 export async function GET(request: Request) {

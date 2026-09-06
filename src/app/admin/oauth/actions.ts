@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { hasPermission } from "@/lib/admin-permissions";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -20,6 +21,8 @@ export async function saveOAuthSettingsAction(
   formData: FormData,
 ): Promise<OAuthSettingsResult> {
   const admin = await requireAdmin();
+  if (!hasPermission(admin, "oauth"))
+    return { ...previous, ok: false, message: "没有第三方登录设置权限。" };
   const parsed = configInputSchema.safeParse({
     provider: formData.get("provider"),
     clientId: formData.get("clientId"),

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Eye, Plus, Search } from "lucide-react";
 import { EmptyState, PageHeading } from "@/components/page-heading";
 import { Button, ButtonLink, Chip, InputField, Notice } from "@/components/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { articleTime, articleStatusLabels } from "@/lib/article-input";
 
@@ -27,7 +27,7 @@ export default async function AdminArticlesPage({
     deleted?: string;
   }>;
 }) {
-  await requireAdmin();
+  await requirePermission("articles");
   const query = await searchParams;
   const status: "all" | "DRAFT" | "PUBLISHED" =
     query.status === "DRAFT" || query.status === "PUBLISHED"

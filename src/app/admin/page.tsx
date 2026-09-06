@@ -7,14 +7,18 @@ import {
 } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { ButtonLink, Card, Chip } from "@/components/ui";
+import { hasPermission } from "@/lib/admin-permissions";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { syncEventStatuses } from "@/lib/event-schedule";
 
 export const dynamic = "force-dynamic";
 export default async function AdminPage() {
-  await requireAdmin();
+  const admin = await requireAdmin();
   await syncEventStatuses();
+  const canReviewUsers = hasPermission(admin, "users");
+  const canManageEvents = hasPermission(admin, "events");
+  const canManageArticles = hasPermission(admin, "articles");
   const [pendingProfiles, pendingRegistrations, openEvents, draftArticles] =
     await Promise.all([
       prisma.profile.count({ where: { reviewStatus: "PENDING" } }),
@@ -25,6 +29,7 @@ export default async function AdminPage() {
   return (
     <main className="page-shell">
       <PageHeading title="工作台" description="待办和常用操作。" />
+      {canReviewUsers || canManageEvents ? (
       <Card className="gap-0 p-0">
         <div className="border-b border-border px-6 py-5">
           <h2 className="section-title">待处理</h2>
@@ -40,14 +45,18 @@ export default async function AdminPage() {
             title: "玩家资料审核",
             count: pendingProfiles,
             href: "/admin/users?status=PENDING",
+            show: canReviewUsers,
           },
           {
             icon: ClipboardCheck,
             title: "活动报名审核",
             count: pendingRegistrations,
             href: "/admin/events?filter=review",
+            show: canManageEvents,
           },
-        ].map(({ icon: Icon, title, count, href }) => (
+        ]
+          .filter((item) => item.show)
+          .map(({ icon: Icon, title, count, href }) => (
           <div
             key={href}
             className="flex items-center justify-between gap-4 border-b border-border px-6 py-5 last:border-0"
@@ -74,6 +83,7 @@ export default async function AdminPage() {
           </div>
         ))}
       </Card>
+      ) : null}
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {[
           {
@@ -83,6 +93,7 @@ export default async function AdminPage() {
             href: "/admin/events",
             create: "/admin/events/new",
             label: "创建活动",
+            show: canManageEvents,
           },
           {
             icon: FilePenLine,
@@ -91,8 +102,11 @@ export default async function AdminPage() {
             href: "/admin/articles",
             create: "/admin/articles/new",
             label: "写文章",
+            show: canManageArticles,
           },
-        ].map(({ icon: Icon, title, description, href, create, label }) => (
+        ]
+          .filter((item) => item.show)
+          .map(({ icon: Icon, title, description, href, create, label }) => (
           <Card
             key={href}
             className="gap-5 p-6"
