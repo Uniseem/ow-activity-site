@@ -19,6 +19,14 @@ const buildCommit =
 
 const nextConfig: NextConfig = {
   ...(process.env.BUILD_STANDALONE === "1" ? { output: "standalone" as const } : {}),
+  // Keep Prisma native/wasm clients out of the Next bundle. D1 is loaded only
+  // when DATABASE_PROVIDER=d1, so Vercel/Node builds should not ship that wasm.
+  serverExternalPackages: [
+    "@prisma/adapter-d1",
+    "@prisma/adapter-pg",
+    "@prisma/client",
+    "pg",
+  ],
   // 固定在构建产物里，不能用远端最新提交冒充当前部署版本。
   env: {
     APP_BUILD_COMMIT: /^[a-f0-9]{40}$/i.test(buildCommit)

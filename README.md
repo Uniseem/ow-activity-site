@@ -1,6 +1,6 @@
 # 上海交大守望先锋社区
 
-> 当前分支为开发交接快照，新增多平台部署与整站备份尚未完成验收。已完成内容、已知问题和后续步骤见 [开发交接文档](./docs/开发交接-2026-09-06.md)。
+> 多平台部署与整站备份的协议、测试和文档已经收尾。Vercel / Cloudflare / VPS 的隔离环境实装仍建议再做一次。交接时未完成项的处理结果见 [开发交接文档](./docs/开发交接-2026-09-06.md)。
 
 面向守望先锋校园玩家的非官方社区活动站，使用 Next.js + React 全栈架构。可部署到 Vercel、全部使用 Cloudflare 资源，或在自己的 VPS 上运行。
 
@@ -83,7 +83,7 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 
 升级已有部署时执行 `npm run db:deploy` 应用新增迁移；Vercel 的构建命令会自动执行。无数据库的本地预览继续使用默认配置。
 
-运行 `npm test` 验证文案回退、配置边界和图片校验；`npm run lint`、`npm run typecheck`、`npm run build` 检查完整项目。
+运行 `npm test` 验证文案回退、配置边界、图片校验和备份协议；设置 `BACKUP_TEST_DATABASE_URL` 后运行 `npm run test:backup` 做整站恢复集成测试。`npm run lint`、`npm run typecheck`、`npm run build` 检查完整项目。
 
 ## 第三方登录
 
@@ -159,6 +159,7 @@ Deploy Hook 只部署其绑定的仓库分支，不会自动合并上游仓库�
 | `npm start`                                | 运行已构建应用                                 |
 | `npm run lint`                             | ESLint 检查                                    |
 | `npm run typecheck`                        | 生成 Next.js 路由类型并执行 TypeScript 检查    |
+| `npm run test:backup`                      | 独立 schema 中验证整站备份与恢复；需 `BACKUP_TEST_DATABASE_URL` |
 | `npm run db:migrate -- --name change_name` | 在开发数据库生成并应用新迁移                   |
 | `npm run db:deploy`                        | 应用已有迁移，适用于新库初始化和部署           |
 | `npm run db:seed`                          | 创建或更新管理员                               |

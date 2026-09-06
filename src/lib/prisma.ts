@@ -1,18 +1,45 @@
 import "server-only";
 
+import { createRequire } from "node:module";
+import { join } from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { attachDatabasePool } from "@vercel/functions";
 import { Pool } from "pg";
 
 import { PrismaClient, Prisma } from "@/generated/prisma/client";
-import {
+import type {
   PrismaClient as D1PrismaClient,
-  Prisma as D1Prisma,
+  Prisma as D1PrismaNamespace,
 } from "@/generated/prisma-d1/client";
-import { PrismaD1 } from "@prisma/adapter-d1";
+import type { PrismaD1 } from "@prisma/adapter-d1";
 import { D1_CLIENT, isD1Database } from "@/lib/database-provider";
 import { getD1 } from "@/lib/cloudflare";
 import type { D1Database } from "@cloudflare/workers-types";
+
+type D1Runtime = {
+  PrismaClient: typeof D1PrismaClient;
+  Prisma: typeof D1PrismaNamespace;
+  PrismaD1: typeof PrismaD1;
+};
+
+let d1Runtime: D1Runtime | undefined;
+function loadD1Runtime(): D1Runtime {
+  if (d1Runtime) return d1Runtime;
+  const nodeRequire = createRequire(join(process.cwd(), "package.json"));
+  const generated = nodeRequire("./src/generated/prisma-d1/client") as {
+    PrismaClient: typeof D1PrismaClient;
+    Prisma: typeof D1PrismaNamespace;
+  };
+  const adapter = nodeRequire("@prisma/adapter-d1") as {
+    PrismaD1: typeof PrismaD1;
+  };
+  d1Runtime = {
+    PrismaClient: generated.PrismaClient,
+    Prisma: generated.Prisma,
+    PrismaD1: adapter.PrismaD1,
+  };
+  return d1Runtime;
+}
 
 const FALLBACK_DATABASE_URL =
   "postgresql://user:password@localhost:5432/ow_activity";
@@ -58,6 +85,7 @@ const d1Clients = new WeakMap<D1Database, PrismaClient>();
 // SQLite LIKE is already ASCII case-insensitive; the PostgreSQL-only mode
 // option must not be sent to the SQLite generated client.
 function sqliteInput(value: unknown): unknown {
+  const D1Prisma = loadD1Runtime().Prisma;
   if (value === Prisma.DbNull) return D1Prisma.DbNull;
   if (value === Prisma.JsonNull) return D1Prisma.JsonNull;
   if (value === Prisma.AnyNull) return D1Prisma.AnyNull;
@@ -111,7 +139,8 @@ function currentClient(): PrismaClient {
   const binding = getD1();
   const existing = d1Clients.get(binding);
   if (existing) return existing;
-  const client = new D1PrismaClient({ adapter: new PrismaD1(binding) });
+  const runtime = loadD1Runtime();
+  const client = new runtime.PrismaClient({ adapter: new runtime.PrismaD1(binding) });
   const guarded = new Proxy(client, {
     get(target, property) {
       if (property === D1_CLIENT) return true;
