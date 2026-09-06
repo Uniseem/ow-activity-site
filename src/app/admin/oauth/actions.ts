@@ -1,5 +1,9 @@
 "use server";
-import { revalidatePath } from "next/cache";
+import {
+  revalidateAccount,
+  revalidateAdminOAuth,
+  revalidateAuthPages,
+} from "@/lib/revalidate-site";
 import { hasPermission } from "@/lib/admin-permissions";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -44,10 +48,9 @@ export async function saveOAuthSettingsAction(
       admin.id,
       process.env.OAUTH_ENCRYPTION_KEY,
     );
-    revalidatePath("/admin/oauth");
-    revalidatePath("/login");
-    revalidatePath("/register");
-    revalidatePath("/me");
+    revalidateAdminOAuth();
+    revalidateAuthPages();
+    revalidateAccount();
     return {
       ...result,
       enabled: parsed.data.enabled,

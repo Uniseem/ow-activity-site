@@ -1,12 +1,16 @@
 import { AuthPage } from "@/components/auth-page";
 import { redirectIfAdminSetupOpen } from "@/lib/auth";
+import { getOAuthAvailability } from "@/lib/oauth/server";
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await redirectIfAdminSetupOpen();
-  const query = await searchParams;
+  const [, query] = await Promise.all([
+    redirectIfAdminSetupOpen(),
+    searchParams,
+    getOAuthAvailability(),
+  ]);
   return (
     <AuthPage
       mode="login"

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
+import { cache } from "react";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -56,7 +57,7 @@ export async function destroySession() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getCurrentSession() {
+export const getCurrentSession = cache(async () => {
   if (!isDatabaseConfigured()) {
     return null;
   }
@@ -69,10 +70,24 @@ export async function getCurrentSession() {
 
   const session = await prisma.session.findUnique({
     where: { tokenHash: tokenHash(token) },
-    include: {
+    select: {
+      id: true,
+      expiresAt: true,
       user: {
-        include: {
-          profile: true,
+        select: {
+          id: true,
+          username: true,
+          role: true,
+          status: true,
+          primaryAdmin: true,
+          adminPermissions: true,
+          profile: {
+            select: {
+              displayName: true,
+              avatarUrl: true,
+              reviewStatus: true,
+            },
+          },
         },
       },
     },
@@ -83,11 +98,13 @@ export async function getCurrentSession() {
   }
 
   return session;
-}
+});
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async () => {
   return (await getCurrentSession())?.user ?? null;
-}
+});
+
+export type SessionUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 
 export async function requireUser() {
   const user = await getCurrentUser();
@@ -99,12 +116,12 @@ export async function requireUser() {
   return user;
 }
 
-export async function isAdminSetupOpen() {
-  return isDatabaseConfigured() && (await canSetUpAdmin(prisma));
-}
-
-export async function shouldOpenAdminSetup() {
+export const shouldOpenAdminSetup = cache(async () => {
   return !isDatabaseConfigured() || (await canSetUpAdmin(prisma));
+});
+
+export async function isAdminSetupOpen() {
+  return isDatabaseConfigured() && (await shouldOpenAdminSetup());
 }
 
 export async function redirectIfAdminSetupOpen() {
@@ -114,15 +131,15 @@ export async function redirectIfAdminSetupOpen() {
 }
 
 export async function requireAdmin() {
-  if (await shouldOpenAdminSetup()) {
-    redirect("/admin/setup");
-  }
-  const user = await requireUser();
-
+  const [open, user] = await Promise.all([
+    shouldOpenAdminSetup(),
+    getCurrentUser(),
+  ]);
+  if (open) redirect("/admin/setup");
+  if (!user) redirect("/login");
   if (user.role !== "ADMIN" || user.status !== "APPROVED") {
     redirect("/");
   }
-
   return user;
 }
 

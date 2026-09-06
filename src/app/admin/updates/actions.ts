@@ -1,7 +1,7 @@
 "use server";
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
 import { hasPermission } from "@/lib/admin-permissions";
+import { revalidateAdminUpdates } from "@/lib/revalidate-site";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { saveUpdateSettings } from "@/lib/updates/service";
@@ -44,7 +44,7 @@ export async function saveUpdateSettingsAction(
       admin.id,
       process.env.OAUTH_ENCRYPTION_KEY,
     );
-    revalidatePath("/admin/updates");
+    revalidateAdminUpdates();
     return {
       ok: true,
       message: "设置已保存，将按新的仓库配置检查更新。",

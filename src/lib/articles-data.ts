@@ -11,7 +11,7 @@ export const articleCardSelect = {
   publishedAt: true,
   author: { select: { profile: { select: { displayName: true } } } },
 } as const;
-export async function getLatestArticles(take = 3) {
+export const getLatestArticles = cache(async (take = 3) => {
   if (!isDatabaseConfigured()) return [];
   return prisma.article.findMany({
     where: publicArticleWhere,
@@ -19,7 +19,7 @@ export async function getLatestArticles(take = 3) {
     take,
     select: articleCardSelect,
   });
-}
+});
 export const getPublishedArticle = cache(async (id: string) => {
   if (!isDatabaseConfigured() || !/^[a-zA-Z0-9-]{20,40}$/.test(id)) return null;
   return prisma.article.findFirst({

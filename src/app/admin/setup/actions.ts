@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateLayout } from "@/lib/revalidate-site";
 import { redirect } from "next/navigation";
 import type { FormState } from "@/app/actions";
 import { AdminSetupClosedError, registerInitialAdmin } from "@/lib/admin-setup";
@@ -44,7 +44,7 @@ export async function setUpAdminAction(
     return { message: "创建失败，请稍后重试。" };
   }
 
-  revalidatePath("/", "layout");
+  revalidateLayout();
   try {
     await createSession(userId);
   } catch {

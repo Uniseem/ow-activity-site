@@ -10,21 +10,27 @@ import { ButtonLink, Card, Chip } from "@/components/ui";
 import { hasPermission } from "@/lib/admin-permissions";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { syncEventStatuses } from "@/lib/event-schedule";
 
 export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   const admin = await requireAdmin();
-  await syncEventStatuses();
   const canReviewUsers = hasPermission(admin, "users");
   const canManageEvents = hasPermission(admin, "events");
   const canManageArticles = hasPermission(admin, "articles");
   const [pendingProfiles, pendingRegistrations, openEvents, draftArticles] =
     await Promise.all([
-      prisma.profile.count({ where: { reviewStatus: "PENDING" } }),
-      prisma.eventRegistration.count({ where: { status: "PENDING" } }),
-      prisma.event.count({ where: { status: { in: ["OPEN", "RUNNING"] } } }),
-      prisma.article.count({ where: { status: "DRAFT" } }),
+      canReviewUsers
+        ? prisma.profile.count({ where: { reviewStatus: "PENDING" } })
+        : 0,
+      canManageEvents
+        ? prisma.eventRegistration.count({ where: { status: "PENDING" } })
+        : 0,
+      canManageEvents
+        ? prisma.event.count({ where: { status: { in: ["OPEN", "RUNNING"] } } })
+        : 0,
+      canManageArticles
+        ? prisma.article.count({ where: { status: "DRAFT" } })
+        : 0,
     ]);
   return (
     <main className="page-shell">

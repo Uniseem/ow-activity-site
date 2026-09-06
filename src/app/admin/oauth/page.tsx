@@ -10,8 +10,8 @@ import { oauthProviders } from "@/lib/oauth/shared";
 
 export const dynamic = "force-dynamic";
 export default async function OAuthSettingsPage() {
-  await requirePermission("oauth");
-  const [rows, origin] = await Promise.all([
+  const [, rows, origin] = await Promise.all([
+    requirePermission("oauth"),
     prisma.oAuthConfig.findMany(),
     pageOAuthOrigin(),
   ]);

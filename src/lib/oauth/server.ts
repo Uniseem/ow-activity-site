@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { headers } from "next/headers";
 import { isDatabaseConfigured, prisma } from "@/lib/prisma";
 import { oauthAvailability, runtimeConfig } from "./config";
@@ -38,15 +39,15 @@ export function oauthOrigin(localOrigin?: string) {
   }
   return "http://localhost:3000";
 }
-export async function pageOAuthOrigin() {
+export const pageOAuthOrigin = cache(async () => {
   const host = (await headers()).get("host");
   return oauthOrigin(host ? `http://${host}` : undefined);
-}
-export async function getOAuthAvailability() {
+});
+export const getOAuthAvailability = cache(async () => {
   if (!isDatabaseConfigured())
     return oauthProviders.map((provider) => ({ provider, available: false }));
   return oauthAvailability(prisma, process.env.OAUTH_ENCRYPTION_KEY);
-}
+});
 export async function getRuntimeOAuthConfig(provider: OAuthProvider) {
   if (!isDatabaseConfigured()) return null;
   return runtimeConfig(
