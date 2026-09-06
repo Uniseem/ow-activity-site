@@ -54,6 +54,7 @@ jobs:
         with:
           name: open-next-${{ github.sha }}
           path: .open-next
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 
