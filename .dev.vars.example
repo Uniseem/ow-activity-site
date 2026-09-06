@@ -1,5 +1,0 @@
-NEXTJS_ENV=development
-DATABASE_PROVIDER=d1
-NEXT_PUBLIC_SITE_URL=http://localhost:8787
-# 使用 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" 生成。
-OAUTH_ENCRYPTION_KEY=replace-with-64-hex-characters

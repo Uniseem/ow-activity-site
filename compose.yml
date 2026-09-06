@@ -1,7 +1,6 @@
 name: ${COMPOSE_PROJECT_NAME:-ow-activity-site}
 
 x-database-environment: &database-environment
-  DATABASE_PROVIDER: postgresql
   DATABASE_URL: postgresql://${POSTGRES_USER:-ow_activity}:${POSTGRES_PASSWORD:?请先运行安装脚本或填写 .env 中的 POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-ow_activity}?schema=public
   DATABASE_URL_UNPOOLED: postgresql://${POSTGRES_USER:-ow_activity}:${POSTGRES_PASSWORD:?请先填写 POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-ow_activity}?schema=public
 

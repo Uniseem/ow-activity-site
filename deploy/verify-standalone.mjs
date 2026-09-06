@@ -20,7 +20,6 @@ const child = spawn(process.execPath, [resolve(appDirectory, "server.js")], {
     NODE_ENV: "production",
     HOSTNAME: "127.0.0.1",
     PORT: String(port),
-    DATABASE_PROVIDER: "postgresql",
     DATABASE_URL: "",
     DATABASE_URL_UNPOOLED: "",
     VERCEL: "",

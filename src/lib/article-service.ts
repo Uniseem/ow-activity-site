@@ -1,5 +1,4 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { usesD1 } from "@/lib/database-provider";
 import { hasPermission, type AdminActor } from "@/lib/admin-permissions";
 import {
   articleExcerpt,
@@ -50,18 +49,7 @@ export async function saveArticle(
             publishedAt: data.status === "PUBLISHED" ? now : null,
           },
         ],
-        ...(usesD1(db) ? {} : { skipDuplicates: true }),
-      })
-      .catch((error: unknown) => {
-        if (
-          usesD1(db) &&
-          typeof error === "object" &&
-          error !== null &&
-          "code" in error &&
-          error.code === "P2002"
-        )
-          return { count: 0 };
-        throw error;
+        skipDuplicates: true,
       });
     if (!result.count) throw new ArticleConflictError();
     return {
