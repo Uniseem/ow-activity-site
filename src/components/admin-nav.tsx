@@ -2,12 +2,12 @@
 
 import { Dropdown, buttonVariants } from "@heroui/react";
 import { ChevronDown } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { useNavigationDisplayPath } from "@/components/navigation-progress";
 import { canSeeAdminHref } from "@/lib/admin-permissions";
 import { adminNavigation, isAdminNavActive } from "@/lib/admin-navigation";
 
 export function AdminNav({ permissions = [] }: { permissions?: string[] }) {
-  const pathname = usePathname();
+  const pathname = useNavigationDisplayPath();
   const current = adminNavigation
     .flatMap((group) => group.links)
     .find((link) => isAdminNavActive(pathname, link.href));
