@@ -3,5 +3,6 @@
   "framework": "nextjs",
   "installCommand": "npm ci",
   "buildCommand": "npm run vercel-build",
+  "git": { "deploymentEnabled": false },
   "crons": [{ "path": "/api/cron/events", "schedule": "0 16 * * *" }]
 }

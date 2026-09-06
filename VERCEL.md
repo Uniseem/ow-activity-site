@@ -1,6 +1,6 @@
 # 部署到 Vercel
 
-Vercel 托管 Next.js 页面和服务端逻辑，Vercel Storage 中的 Neon Postgres 保存账号、会话、资料、活动与报名。
+Vercel 托管 Next.js 页面和服务端逻辑，Marketplace 里的 Neon Postgres 保存账号、会话、资料、活动与报名。这条路径由 Vercel 自己执行 `npm run vercel-build`，不走仓库里打包 Cloudflare / Docker 的 GitHub Actions。
 
 ## 创建项目和数据库
 
@@ -24,7 +24,10 @@ Vercel 的定时调用可能延迟，因此活动页面、后台和报名操作�
 Install Command: npm ci
 Build Command: npm run vercel-build
 Framework: Next.js
+git.deploymentEnabled: false
 ```
+
+推送到已连接的 Git 仓库不会再自动创建 Deployment。需要发布时在 Vercel 控制台手动 Deploy，或使用 CLI / Deploy Hook。
 
 安装依赖时生成 Prisma 客户端。构建先执行 `prisma migrate deploy`，然后重新生成客户端并执行 `next build`，避免依赖缓存带来旧客户端。
 
@@ -32,7 +35,7 @@ Framework: Next.js
 
 ## 初始化管理员
 
-新站点部署完成后打开 `/admin`，页面会跳转到首次管理员注册。填写用户名、公开昵称、密码和确认密码后，首个成功提交的账号获得管理员权限并进入后台，不需要预设管理员环境变量。
+新站点部署完成后打开 `/admin`，没有管理员时会转到 `/admin/setup`。填写用户名、公开昵称、密码和确认密码后，第一个成功提交的账号获得管理员权限并进入后台，不需要预设管理员环境变量。
 
 首次注册通过数据库事务完成，并发提交只能创建一名管理员。成功后入口永久关闭，后续普通用户仍需审核。升级已有管理员的站点时也会关闭此入口，不会改变原有账号权限。
 

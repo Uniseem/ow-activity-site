@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/Uniseem/ow-activity-site/main/scrip
 
 没有传入 `--domain` 时，会从终端询问，`curl | bash` 也可以输入。无终端的自动化任务必须提供域名。脚本不会自动改动系统防火墙或安装 Docker。
 
-脚本下载代码、生成随机数据库密码和加密密钥、构建镜像、执行迁移、启动服务。成功后访问 `https://自己的域名/admin/setup`，第一个完成注册的人成为管理员。新站点请立即完成管理员初始化。
+脚本下载代码、生成随机数据库密码和加密密钥、在这台机器上构建镜像、执行迁移、启动服务。成功后打开 `https://自己的域名/admin`，没有管理员时会转到 `/admin/setup`，第一个完成注册的人成为管理员。新站点请马上做完这一步。
 
 重复运行**同一条命令、同一个安装目录**即可更新；现有 `.env`、数据库卷、证书卷均保留。存在代码修改或仓库分支不一致时脚本会停止，不会覆盖修改。支持 `--repo https://github.com/用户名/仓库.git --ref main` 部署自己的公开 fork。
 
@@ -99,14 +99,12 @@ curl -fsS http://127.0.0.1:3100/api/health
 
 停止容器可用 `docker compose down`，它会保留数据。**不要执行 `docker compose down -v`，也不要删除 `postgres_data` 卷**，否则会删除该站点数据库。不要修改已有数据库的 `POSTGRES_PASSWORD` 后直接重启，PostgreSQL 不会据此修改已有账号密码。
 
-OAuth 客户端配置仍在管理员后台填写。更换域名后，需要更新 Google / GitHub 应用的回调地址。后台的 Vercel Deploy Hook 是 Vercel 专用；VPS 更新请使用上面的命令。
+OAuth 客户端配置仍在管理员后台填写。更换域名后，更新 Google / GitHub 应用的回调地址。后台的 Vercel Deploy Hook 只对 Vercel 有用；VPS 更新用上面的命令。
 
 同机多站点必须使用独立的 Compose 项目名、安装目录、数据库卷和本机端口；共用服务器的 80/443 时应由统一反向代理管理域名。
 
-## 验证范围
+## 仓库镜像和验收
 
-推送到 `main` 时，GitHub Actions 会在 Linux 上构建 `runner` 和 `migrate` 镜像，并推到 `ghcr.io/uniseem/ow-activity-site`（标签为提交 SHA 和 `main`）。VPS 默认仍在目标机本地构建，不依赖该仓库镜像。本机 Windows 没有 Docker 时，用 Actions 的构建结果确认镜像能打出来即可。
+推到 `main` 时，GitHub Actions 在 Ubuntu 上构建 `runner`、`migrate` 镜像，并推到 `ghcr.io/uniseem/ow-activity-site`（标签为提交 SHA 和 `main`；迁移镜像带 `-migrate` 后缀）。Pull Request 会构建这两份镜像，但不推仓库。`scripts/install.sh` 和 `compose.yml` 仍在目标 VPS 上 `docker compose build`，不会去拉 GHCR。
 
-本仓库提供部署配置及脚本，不会自动连接你的 VPS。脚本语法和部署配置在开发时检查；首次在目标 VPS 执行时仍需确认镜像构建、数据库迁移、域名证书和管理员登录均成功。
-
-开发者可以用 `bash -n scripts/install.sh` 检查语法，运行 `bash deploy/test-install.sh` 验证安装和更新流程。后者使用模拟 Git / Docker，检查密钥保留、参数错误和构建 / 迁移失败的中止行为，不会启动容器或修改真实数据库。
+仓库不会自动连上任何 VPS。脚本语法可以用 `bash -n scripts/install.sh` 检查，`bash deploy/test-install.sh` 用模拟 Git / Docker 看密钥是否保留、参数错误和构建 / 迁移失败会不会中止，不会启动容器或改真实数据库。第一次在目标机安装时，仍要确认镜像构建、迁移、证书和管理员登录都成功。
