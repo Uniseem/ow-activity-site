@@ -8,6 +8,7 @@
 @import "./motion.css";
 @import "./player-carousel.css";
 @import "./nav-indicator.css";
+@import "./nav-progress.css";
 
 @layer base {
   :root {

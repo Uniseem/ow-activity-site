@@ -1,0 +1,116 @@
+.nav-progress {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 2147483647;
+  height: 4px;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: #e8eaed;
+  opacity: 0;
+}
+
+.nav-progress[data-state="running"],
+.nav-progress[data-state="done"] {
+  opacity: 1;
+}
+
+.nav-progress[data-state="running"] {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--accent) 38%, transparent) 22%,
+    var(--accent) 50%,
+    color-mix(in srgb, var(--accent) 38%, transparent) 78%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 42% 100%;
+  animation: nav-progress-flow 1.15s infinite linear;
+}
+
+.nav-progress[data-state="done"] {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+@keyframes nav-progress-flow {
+  0% {
+    background-position: -42% 0;
+  }
+  100% {
+    background-position: 142% 0;
+  }
+}
+
+.community-content,
+.site-workspace {
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+html[data-nav-pending] .community-content,
+html[data-nav-pending] .site-workspace {
+  background-color: #f1f3f4;
+}
+
+html[data-nav-pending] .community-content::before,
+html[data-nav-pending] .site-workspace::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  background: rgb(232 234 237 / 0.58);
+}
+
+html[data-nav-pending][data-nav-swap] .community-content::before,
+html[data-nav-pending][data-nav-swap] .site-workspace::before {
+  display: none;
+}
+
+.nav-route-fallback {
+  position: relative;
+  z-index: 1;
+  min-height: calc(100vh - 6rem);
+}
+
+.nav-shimmer {
+  position: relative;
+  overflow: hidden;
+  background: #e8eaed;
+}
+
+.nav-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.82) 46%,
+    transparent 100%
+  );
+  animation: nav-shimmer-flow 1.35s ease-in-out infinite;
+}
+
+@keyframes nav-shimmer-flow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress[data-state="running"] {
+    animation: none;
+    background-image: none;
+    background-color: var(--accent);
+  }
+  .nav-shimmer::after {
+    animation: none;
+  }
+}

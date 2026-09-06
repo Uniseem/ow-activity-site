@@ -9,7 +9,6 @@ import {
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useTransition, type ReactNode } from "react";
 import { logoutAction } from "@/app/actions";
 import { Avatar } from "@/components/avatar";
@@ -18,8 +17,14 @@ import { FloatingHeader } from "@/components/floating-header";
 import { RouteMotion } from "@/components/route-motion";
 import { ButtonLink } from "@/components/ui";
 import { AdminNav } from "@/components/admin-nav";
+import { adminPageLabel } from "@/components/admin-route-fallback";
+import {
+  NavigationPendingPage,
+  NavigationProgressProvider,
+  useNavigationDisplayPath,
+} from "@/components/navigation-progress";
 import { canSeeAdminHref } from "@/lib/admin-permissions";
-import { adminNavigation, isAdminNavActive } from "@/lib/admin-navigation";
+import { adminNavigation } from "@/lib/admin-navigation";
 import {
   SiteLogo,
   useSiteConfiguration,
@@ -122,18 +127,32 @@ export function SiteNav({
   children: ReactNode;
   loginHref?: string;
 }) {
-  const pathname = usePathname();
+  return (
+    <NavigationProgressProvider>
+      <SiteNavFrame user={user} loginHref={loginHref}>
+        {children}
+      </SiteNavFrame>
+    </NavigationProgressProvider>
+  );
+}
+
+function SiteNavFrame({
+  user,
+  children,
+  loginHref,
+}: {
+  user: NavUser | null;
+  children: ReactNode;
+  loginHref: string;
+}) {
+  const displayPath = useNavigationDisplayPath();
   const t = useSiteText();
-  const admin = pathname === "/admin" || pathname.startsWith("/admin/");
+  const admin = displayPath === "/admin" || displayPath.startsWith("/admin/");
   const active = (href: string) =>
     href === "/" || href === "/admin"
-      ? pathname === href
-      : pathname === href || pathname.startsWith(href + "/");
-  const pageLabel =
-    adminNavigation
-      .flatMap((group) => group.links)
-      .find((link) => isAdminNavActive(pathname, link.href))?.label ??
-    "后台初始化";
+      ? displayPath === href
+      : displayPath === href || displayPath.startsWith(href + "/");
+  const pageLabel = adminPageLabel(displayPath);
 
   if (admin)
     return (
@@ -193,7 +212,7 @@ export function SiteNav({
           </FloatingHeader>
           <div className="site-workspace" id="page-content" tabIndex={-1}>
             <RouteMotion />
-            {children}
+            <NavigationPendingPage>{children}</NavigationPendingPage>
           </div>
         </div>
       </div>
@@ -215,7 +234,7 @@ export function SiteNav({
       </FloatingHeader>
       <div className="community-content" id="page-content" tabIndex={-1}>
         <RouteMotion />
-        {children}
+        <NavigationPendingPage>{children}</NavigationPendingPage>
       </div>
       <footer className="community-footer">
         <p>{t("footer.note")}</p>
