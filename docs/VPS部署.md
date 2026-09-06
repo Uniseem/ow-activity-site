@@ -105,6 +105,8 @@ OAuth 客户端配置仍在管理员后台填写。更换域名后，需要更�
 
 ## 验证范围
 
+推送到 `main` 时，GitHub Actions 会在 Linux 上构建 `runner` 和 `migrate` 镜像，并推到 `ghcr.io/uniseem/ow-activity-site`（标签为提交 SHA 和 `main`）。VPS 默认仍在目标机本地构建，不依赖该仓库镜像。本机 Windows 没有 Docker 时，用 Actions 的构建结果确认镜像能打出来即可。
+
 本仓库提供部署配置及脚本，不会自动连接你的 VPS。脚本语法和部署配置在开发时检查；首次在目标 VPS 执行时仍需确认镜像构建、数据库迁移、域名证书和管理员登录均成功。
 
 开发者可以用 `bash -n scripts/install.sh` 检查语法，运行 `bash deploy/test-install.sh` 验证安装和更新流程。后者使用模拟 Git / Docker，检查密钥保留、参数错误和构建 / 迁移失败的中止行为，不会启动容器或修改真实数据库。

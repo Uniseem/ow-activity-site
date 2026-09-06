@@ -1,6 +1,6 @@
 # 上海交大守望先锋社区
 
-> 多平台部署与整站备份的协议、测试和文档已经收尾。Vercel / Cloudflare / VPS 的隔离环境实装仍建议再做一次。交接时未完成项的处理结果见 [开发交接文档](./docs/开发交接-2026-09-06.md)。
+> Cloudflare 与 Docker 打包由 GitHub Actions 在 Linux 上完成，不要在 Windows 本机打 OpenNext 包或构建镜像。Vercel 仍由其自己的构建执行。交接说明见 [开发交接文档](./docs/开发交接-2026-09-06.md)。
 
 面向守望先锋校园玩家的非官方社区活动站，使用 Next.js + React 全栈架构。可部署到 Vercel、全部使用 Cloudflare 资源，或在自己的 VPS 上运行。
 
@@ -20,6 +20,8 @@ curl -fsSL https://raw.githubusercontent.com/Uniseem/ow-activity-site/main/scrip
 ```
 
 首次部署后进入 `/admin/setup` 注册首位管理员。迁移已有网站时，进入后台「备份与恢复」导入旧站导出的 ZIP，账号、密码、内容和设置会覆盖为备份中的数据。详见 [备份与恢复](./docs/备份与恢复.md)。
+
+推送到 `main` 或提交 Pull Request 时，GitHub Actions 会在 Ubuntu 上跑单测，并打包 Cloudflare OpenNext 与 Docker 镜像。`main` 上的 Docker 镜像推到 `ghcr.io/uniseem/ow-activity-site`。Cloudflare 发布需在 Actions 手动运行 CI 并勾选部署，同时配置 `CLOUDFLARE_API_TOKEN` 与 `CLOUDFLARE_ACCOUNT_ID`。Vercel 仍由其自身构建，不走这套打包。
 
 ## 架构
 
@@ -166,7 +168,7 @@ Deploy Hook 只部署其绑定的仓库分支，不会自动合并上游仓库�
 | `npm run db:generate`                      | 重新生成 Prisma 客户端                         |
 | `npm run db:push`                          | 开发原型用，直接同步结构，不生成迁移历史       |
 | `npm run vercel-build`                     | 应用已有迁移，然后构建应用；由 Vercel 配置调用 |
-| `npm run cf:build`                         | 构建 Cloudflare Workers 版本 |
+| `npm run cf:build`                         | 构建 Cloudflare Workers 版本；请在 Linux 或 GitHub Actions 中执行 |
 | `npm run cf:preview`                       | 本地预览 Cloudflare 构建产物 |
 | `npm run cf:deploy`                        | 发布 Cloudflare Workers 版本 |
 | `npm run cf:db:local`                      | 应用本地 D1 迁移 |
@@ -194,6 +196,7 @@ wrangler.jsonc         Cloudflare Workers、D1、R2 配置
 compose.yml            VPS 容器编排
 scripts/install.sh     VPS 一行安装与更新
 deploy/                VPS 配置模板、HTTPS 与定时任务
+.github/workflows/     Linux 上的检查、Cloudflare 打包和 Docker 镜像
 ```
 
 完整部署步骤见 [Vercel](./VERCEL.md)、[Cloudflare](./docs/Cloudflare部署.md) 和 [VPS](./docs/VPS部署.md)；迁移网站见 [备份与恢复](./docs/备份与恢复.md)。

@@ -2,7 +2,7 @@
 
 这条部署路径使用 Cloudflare Workers 运行 Next.js，D1 保存账号、文章、活动和设置，R2 保存上传图片及 Next.js 缓存，Workers Assets 提供静态文件。无需 Vercel、Neon、外部 PostgreSQL 或 Hyperdrive。Google/GitHub 登录和 GitHub 更新检查仍调用各自的第三方 API；管理员自行填写的外部图片链接不会自动镜像。
 
-当前适配器为 OpenNext，保留现有 Next.js App Router 和 HeroUI。建议在 Linux、macOS 或 Cloudflare Workers Builds 构建；OpenNext 官方不保证 Windows 完整兼容。
+当前适配器为 OpenNext，保留现有 Next.js App Router 和 HeroUI。OpenNext 官方不保证 Windows 完整兼容；本仓库用 GitHub Actions 在 Linux 上打包，不要在 Windows 本机执行 `npm run cf:build`。
 
 ## 首次部署
 
@@ -66,6 +66,8 @@ npm ci
 npm run cf:db:deploy
 npm run cf:deploy
 ```
+
+推荐用仓库里的 GitHub Actions：推送到 `main` 或打开 Pull Request 时，会在 Ubuntu 上执行 `npm run cf:build`，并把 `.open-next` 作为 Artifact 保存 7 天。需要发布时，在 Actions 里手动运行 **CI**，勾选「打包完成后部署到 Cloudflare Workers」。仓库 Secrets 需填写 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`，`wrangler.jsonc` 里的 D1 ID 必须已换成真实值。
 
 也可把仓库接入 Cloudflare Workers Builds，构建命令使用 `npm run cf:build`，部署命令使用 `npm run cf:db:deploy && npx opennextjs-cloudflare deploy`。构建需要相应 D1 迁移权限。不要用 `npm run vercel-build`，也不要对 D1 执行 PostgreSQL 的 `db:deploy`。
 
