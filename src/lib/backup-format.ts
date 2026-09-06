@@ -8,7 +8,15 @@ export const BACKUP_MAX_ASSET_BYTES = 2 * 1024 * 1024;
 export const BACKUP_MAX_FILES = 5001;
 export const BACKUP_CHUNK_BYTES = 384 * 1024;
 export const BACKUP_MAX_ROWS = 50_000;
+// Worst case is many tiny media files: one chunk each, plus data.json's extra chunks.
+export const BACKUP_MAX_CHUNKS =
+  Math.ceil(BACKUP_MAX_BYTES / BACKUP_CHUNK_BYTES) +
+  Math.max(BACKUP_MAX_FILES - 1, Math.ceil(BACKUP_MAX_MEDIA_BYTES / BACKUP_CHUNK_BYTES));
+export const BACKUP_MAX_REQUEST_BYTES = 2 * 1024 * 1024;
+export const BACKUP_MAX_UPLOAD_BASE64 = Math.ceil((BACKUP_CHUNK_BYTES * 4) / 3);
 export const BACKUP_TABLES = ["User", "Profile", "AdminSetup", "OAuthConfig", "OAuthAccount", "UpdateSettings", "Event", "EventRegistration", "Article", "SiteSettings", "SiteAsset"] as const;
+export const BACKUP_FOREIGN_USER_FIELDS = ["userId", "authorId", "createdById", "reviewedById"] as const;
+export const BACKUP_AUDIT_USER_FIELDS = ["updatedById", "uploadedById"] as const;
 export type BackupTable = typeof BACKUP_TABLES[number];
 export type BackupRow = Record<string, unknown>;
 export type BackupSnapshot = { table: string; rows: BackupRow[] }[];
@@ -70,7 +78,9 @@ export function validateBackupSnapshot(value: unknown): { snapshot: BackupSnapsh
   const users = new Set(rows("User").map((row) => row.id));
   const events = new Set(rows("Event").map((row) => row.id));
   for (const entry of snapshot) for (const row of entry.rows) {
-    for (const field of ["userId", "authorId", "createdById", "reviewedById"])
+    // Only real foreign keys must resolve. updatedById / uploadedById are
+    // historical audit fields without database FKs and may name deleted users.
+    for (const field of BACKUP_FOREIGN_USER_FIELDS)
       if (row[field] != null && !users.has(row[field])) throw new BackupError(`${entry.table} 引用了不存在的账号。`);
     if (entry.table === "EventRegistration" && !events.has(row.eventId)) throw new BackupError("报名记录引用了不存在的活动。");
     if (entry.table === "OAuthConfig" && row.enabled && (!row.clientId || !row.clientSecret)) throw new BackupError("启用的第三方登录缺少应用密钥。");
@@ -95,6 +105,26 @@ export const backupManifestSchema = z.strictObject({
 });
 export type BackupManifest = z.infer<typeof backupManifestSchema>;
 export type BackupFile = BackupManifest["files"][number];
+export function fileChunkCount(bytes: number) {
+  return Math.ceil(bytes / BACKUP_CHUNK_BYTES);
+}
 export function fileChunkStart(manifest: BackupManifest, fileIndex: number) {
-  return manifest.files.slice(0, fileIndex).reduce((sum, file) => sum + Math.ceil(file.bytes / BACKUP_CHUNK_BYTES), 0);
+  return manifest.files.slice(0, fileIndex).reduce((sum, file) => sum + fileChunkCount(file.bytes), 0);
+}
+export function manifestChunkCount(manifest: BackupManifest) {
+  return manifest.files.reduce((sum, file) => sum + fileChunkCount(file.bytes), 0);
+}
+
+const transferId = z.string().uuid();
+export const backupRequestSchema = z.discriminatedUnion("operation", [
+  z.strictObject({ operation: z.literal("export") }),
+  z.strictObject({ operation: z.literal("download"), id: transferId, index: z.number().int().min(0).max(BACKUP_MAX_CHUNKS) }),
+  z.strictObject({ operation: z.literal("import"), manifest: z.unknown() }),
+  z.strictObject({ operation: z.literal("upload"), id: transferId, index: z.number().int().min(0).max(BACKUP_MAX_CHUNKS), data: z.string().max(BACKUP_MAX_UPLOAD_BASE64) }),
+  z.strictObject({ operation: z.literal("preview"), id: transferId }),
+  z.strictObject({ operation: z.literal("restore"), id: transferId, confirmation: z.string().max(30) }),
+  z.strictObject({ operation: z.literal("cancel"), id: transferId }),
+]);
+export function isTrustedBackupOrigin(origin: string | null, expectedOrigin: string) {
+  return Boolean(origin && origin === expectedOrigin);
 }

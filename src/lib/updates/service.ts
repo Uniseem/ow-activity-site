@@ -15,6 +15,7 @@ import {
 import {
   CHECK_INTERVAL_MS,
   UpdateError,
+  isUpdateCheckFresh,
   type UpdateCheck,
   type UpdateSettingsView,
 } from "./shared";
@@ -45,11 +46,15 @@ export function parseDeployHook(value: string) {
   return url.href;
 }
 export async function getUpdateSettings(db: PrismaClient) {
-  return db.updateSettings.upsert({
-    where: { id },
-    create: { id },
-    update: {},
-  });
+  const existing = await db.updateSettings.findUnique({ where: { id } });
+  if (existing) return existing;
+  try {
+    return await db.updateSettings.create({ data: { id } });
+  } catch {
+    const raced = await db.updateSettings.findUnique({ where: { id } });
+    if (raced) return raced;
+    throw new UpdateError("无法读取版本更新设置。");
+  }
 }
 export function settingsView(row: UpdateSettings): UpdateSettingsView {
   return {
@@ -155,6 +160,29 @@ function withDeployment(
     requestedAt: pending ? row.deployRequestedAt!.toISOString() : null,
   };
 }
+function freshCachedCheck(
+  row: UpdateSettings,
+  currentSha: string,
+  force: boolean,
+) {
+  const cached =
+    row.checkKey === checkKey(row, currentSha) && row.checkResult
+      ? (row.checkResult as unknown as UpdateCheck)
+      : null;
+  const ttl = force
+    ? 15_000
+    : cached?.status === "error"
+      ? 60_000
+      : CHECK_INTERVAL_MS;
+  // Prefer the ISO timestamp in the payload. Some adapters shift DateTime columns.
+  if (
+    cached &&
+    (isUpdateCheckFresh(cached.checkedAt, ttl) ||
+      isUpdateCheckFresh(row.checkedAt, ttl))
+  )
+    return cached;
+  return null;
+}
 export async function checkForUpdates(
   db: PrismaClient,
   currentSha: string,
@@ -163,18 +191,8 @@ export async function checkForUpdates(
   fetcher: typeof fetch = fetch,
 ): Promise<UpdateCheck> {
   const row = await getUpdateSettings(db);
-  const cacheKey = checkKey(row, currentSha);
-  const cached =
-    row.checkKey === cacheKey && row.checkResult
-      ? (row.checkResult as unknown as UpdateCheck)
-      : null;
-  const ttl = force
-    ? 15_000
-    : cached?.status === "error"
-      ? 60_000
-      : CHECK_INTERVAL_MS;
-  if (cached && row.checkedAt && Date.now() - row.checkedAt.getTime() < ttl)
-    return withDeployment(cached, row, key);
+  const cached = freshCachedCheck(row, currentSha, force);
+  if (cached) return withDeployment(cached, row, key);
   const result = emptyCheck(row, currentSha);
   if (!shaSchema.safeParse(currentSha).success)
     return {
@@ -192,7 +210,22 @@ export async function checkForUpdates(
     },
     data: { checkLease: lease, checkLeaseUntil: new Date(Date.now() + 45_000) },
   });
-  if (!acquired.count) return { ...result, status: "checking" };
+  if (!acquired.count) {
+    const latest = await getUpdateSettings(db);
+    const nowCached = freshCachedCheck(latest, currentSha, force);
+    return nowCached
+      ? withDeployment(nowCached, latest, key)
+      : { ...result, status: "checking" };
+  }
+  const afterLease = await getUpdateSettings(db);
+  const raced = freshCachedCheck(afterLease, currentSha, force);
+  if (raced) {
+    await db.updateSettings.updateMany({
+      where: { id, checkLease: lease },
+      data: { checkLease: null, checkLeaseUntil: null },
+    });
+    return withDeployment(raced, afterLease, key);
+  }
   try {
     const head = await getRepositoryHead(
       row.repositoryUrl,
@@ -238,7 +271,7 @@ export async function checkForUpdates(
   const saved = await db.updateSettings.updateMany({
     where: { id, revision: row.revision, checkLease: lease },
     data: {
-      checkKey: cacheKey,
+      checkKey: checkKey(row, currentSha),
       checkResult: result as unknown as Prisma.InputJsonValue,
       checkedAt: new Date(),
       checkLease: null,

@@ -1,18 +1,70 @@
 import "server-only";
 
-import { PrismaPg } from "@prisma/adapter-pg";
-import { attachDatabasePool } from "@vercel/functions";
-import { Pool } from "pg";
+import { createRequire } from "node:module";
+import { join } from "node:path";
+import type { PrismaPg } from "@prisma/adapter-pg";
+import type { attachDatabasePool } from "@vercel/functions";
+import type { Pool } from "pg";
 
 import { PrismaClient, Prisma } from "@/generated/prisma/client";
-import {
+import type {
   PrismaClient as D1PrismaClient,
-  Prisma as D1Prisma,
+  Prisma as D1PrismaNamespace,
 } from "@/generated/prisma-d1/client";
-import { PrismaD1 } from "@prisma/adapter-d1";
+import type { PrismaD1 } from "@prisma/adapter-d1";
 import { D1_CLIENT, isD1Database } from "@/lib/database-provider";
 import { getD1 } from "@/lib/cloudflare";
 import type { D1Database } from "@cloudflare/workers-types";
+
+type D1Runtime = {
+  PrismaClient: typeof D1PrismaClient;
+  Prisma: typeof D1PrismaNamespace;
+  PrismaD1: typeof PrismaD1;
+};
+
+type PgRuntime = {
+  PrismaPg: typeof PrismaPg;
+  attachDatabasePool: typeof attachDatabasePool;
+  Pool: typeof Pool;
+};
+
+let d1Runtime: D1Runtime | undefined;
+function loadD1Runtime(): D1Runtime {
+  if (d1Runtime) return d1Runtime;
+  const nodeRequire = createRequire(join(process.cwd(), "package.json"));
+  const generated = nodeRequire("./src/generated/prisma-d1/client") as {
+    PrismaClient: typeof D1PrismaClient;
+    Prisma: typeof D1PrismaNamespace;
+  };
+  const adapter = nodeRequire("@prisma/adapter-d1") as {
+    PrismaD1: typeof PrismaD1;
+  };
+  d1Runtime = {
+    PrismaClient: generated.PrismaClient,
+    Prisma: generated.Prisma,
+    PrismaD1: adapter.PrismaD1,
+  };
+  return d1Runtime;
+}
+
+let pgRuntime: PgRuntime | undefined;
+function loadPgRuntime(): PgRuntime {
+  if (pgRuntime) return pgRuntime;
+  const nodeRequire = createRequire(join(process.cwd(), "package.json"));
+  const adapter = nodeRequire("@prisma/adapter-pg") as {
+    PrismaPg: typeof PrismaPg;
+  };
+  const vercel = nodeRequire("@vercel/functions") as {
+    attachDatabasePool: typeof attachDatabasePool;
+  };
+  const pg = nodeRequire("pg") as { Pool: typeof Pool };
+  pgRuntime = {
+    PrismaPg: adapter.PrismaPg,
+    attachDatabasePool: vercel.attachDatabasePool,
+    Pool: pg.Pool,
+  };
+  return pgRuntime;
+}
 
 const FALLBACK_DATABASE_URL =
   "postgresql://user:password@localhost:5432/ow_activity";
@@ -39,6 +91,7 @@ function createPrismaClient() {
     assertDatabaseConfigured();
   }
 
+  const { Pool, PrismaPg, attachDatabasePool } = loadPgRuntime();
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL?.trim() || FALLBACK_DATABASE_URL,
     // 本地 Prisma dev 基于单连接的 PGlite，串行查询避免并发协议冲突。
@@ -48,9 +101,7 @@ function createPrismaClient() {
   });
 
   attachDatabasePool(pool);
-  const adapter = new PrismaPg(pool);
-
-  return new PrismaClient({ adapter });
+  return new PrismaClient({ adapter: new PrismaPg(pool) });
 }
 
 const d1Clients = new WeakMap<D1Database, PrismaClient>();
@@ -58,6 +109,7 @@ const d1Clients = new WeakMap<D1Database, PrismaClient>();
 // SQLite LIKE is already ASCII case-insensitive; the PostgreSQL-only mode
 // option must not be sent to the SQLite generated client.
 function sqliteInput(value: unknown): unknown {
+  const D1Prisma = loadD1Runtime().Prisma;
   if (value === Prisma.DbNull) return D1Prisma.DbNull;
   if (value === Prisma.JsonNull) return D1Prisma.JsonNull;
   if (value === Prisma.AnyNull) return D1Prisma.AnyNull;
@@ -111,7 +163,8 @@ function currentClient(): PrismaClient {
   const binding = getD1();
   const existing = d1Clients.get(binding);
   if (existing) return existing;
-  const client = new D1PrismaClient({ adapter: new PrismaD1(binding) });
+  const runtime = loadD1Runtime();
+  const client = new runtime.PrismaClient({ adapter: new runtime.PrismaD1(binding) });
   const guarded = new Proxy(client, {
     get(target, property) {
       if (property === D1_CLIENT) return true;

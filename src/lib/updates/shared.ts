@@ -1,5 +1,18 @@
 export const DEFAULT_REPOSITORY = "https://github.com/Uniseem/ow-activity-site";
 export const CHECK_INTERVAL_MS = 5 * 60 * 1000;
+export function isUpdateCheckFresh(
+  checkedAt: string | Date | null | undefined,
+  ttl: number,
+  now = Date.now(),
+) {
+  const timestamp =
+    typeof checkedAt === "string"
+      ? Date.parse(checkedAt)
+      : checkedAt instanceof Date
+        ? checkedAt.getTime()
+        : Number.NaN;
+  return Number.isFinite(timestamp) && now - timestamp < ttl;
+}
 export type UpdateCommit = {
   sha: string;
   title: string;

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { type PrismaClient, type Prisma } from "../generated/prisma/client";
 import { seal, unseal, hasEncryptionKey } from "./oauth/security";
 import { validateSiteAsset } from "./site-asset";
-import { BACKUP_CHUNK_BYTES, BACKUP_FORMAT, BACKUP_MAX_BYTES, BACKUP_MAX_MEDIA_BYTES, BACKUP_MAX_ASSET_BYTES, BACKUP_MAX_FILES, BACKUP_TABLES, BACKUP_VERSION, BackupError, backupManifestSchema, fileChunkStart, validateBackupSnapshot, type BackupManifest, type BackupRow, type BackupSnapshot, type BackupFile } from "./backup-format";
+import { BACKUP_CHUNK_BYTES, BACKUP_FORMAT, BACKUP_MAX_BYTES, BACKUP_MAX_MEDIA_BYTES, BACKUP_MAX_ASSET_BYTES, BACKUP_MAX_FILES, BACKUP_TABLES, BACKUP_VERSION, BackupError, backupManifestSchema, fileChunkCount, fileChunkStart, manifestChunkCount, validateBackupSnapshot, type BackupManifest, type BackupRow, type BackupSnapshot } from "./backup-format";
 
 type TransferDb = Pick<PrismaClient, "backupTransfer" | "backupChunk">;
 const TTL = 30 * 60 * 1000;
@@ -156,13 +156,13 @@ export async function startBackupImport(db: PrismaClient, ownerId: string, value
   await prepareTransfer(db, ownerId);
   const id = randomUUID();
   await db.backupTransfer.create({ data: { id, ownerId, kind: "import", manifest: parsed.data, expiresAt: new Date(Date.now() + TTL) } });
-  return { id, chunks: parsed.data.files.reduce((sum, file) => sum + Math.ceil(file.bytes / BACKUP_CHUNK_BYTES), 0) };
+  return { id, chunks: manifestChunkCount(parsed.data) };
 }
 
 function chunkExpectedSize(manifest: BackupManifest, index: number) {
   let start = 0;
   for (const file of manifest.files) {
-    const count = Math.ceil(file.bytes / BACKUP_CHUNK_BYTES);
+    const count = fileChunkCount(file.bytes);
     if (index >= start && index < start + count) return Math.min(BACKUP_CHUNK_BYTES, file.bytes - (index - start) * BACKUP_CHUNK_BYTES);
     start += count;
   }
@@ -178,7 +178,7 @@ export async function uploadBackupChunk(db: PrismaClient, id: string, ownerId: s
 }
 
 async function readStagedFile(db: TransferDb, transferId: string, manifest: BackupManifest, fileIndex: number): Promise<Uint8Array> {
-  const file = manifest.files[fileIndex], start = fileChunkStart(manifest, fileIndex), count = Math.ceil(file.bytes / BACKUP_CHUNK_BYTES);
+  const file = manifest.files[fileIndex], start = fileChunkStart(manifest, fileIndex), count = fileChunkCount(file.bytes);
   const chunks = await db.backupChunk.findMany({ where: { transferId, index: { gte: start, lt: start + count } }, orderBy: { index: "asc" } });
   if (chunks.length !== count || chunks.some((chunk, index) => chunk.index !== start + index)) throw new BackupError("备份尚未上传完整。");
   const bytes = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk.data, "base64")));
@@ -192,7 +192,7 @@ async function validateAssetBytes(asset: BackupRow, bytes: Uint8Array) {
 async function loadImport(db: PrismaClient, id: string, ownerId: string, validateMedia: boolean) {
   const transfer = await ownedTransfer(db, id, ownerId, "import");
   const manifest = backupManifestSchema.parse(transfer.manifest);
-  const expectedCount = manifest.files.reduce((sum, file) => sum + Math.ceil(file.bytes / BACKUP_CHUNK_BYTES), 0);
+  const expectedCount = manifestChunkCount(manifest);
   if (await db.backupChunk.count({ where: { transferId: id } }) !== expectedCount) throw new BackupError("备份尚未上传完整。");
   const bytes = await readStagedFile(db, id, manifest, 0);
   let value: unknown;

@@ -7,6 +7,7 @@ import {
   parseBranch,
 } from "../src/lib/updates/github";
 import { parseDeployHook } from "../src/lib/updates/service";
+import { CHECK_INTERVAL_MS, isUpdateCheckFresh } from "../src/lib/updates/shared";
 
 const repo = "https://github.com/Uniseem/ow-activity-site";
 const base = "a".repeat(40),
@@ -100,4 +101,18 @@ test("限流、不存在的仓库和网络失败不伪装成最新版本", async
     }),
     /暂时无法连接/,
   );
+});
+test("版本检查缓存以 ISO 时间为准，不受 DateTime 列时区偏移影响", () => {
+  const now = Date.parse("2026-09-06T01:00:00.000Z");
+  assert.equal(
+    isUpdateCheckFresh("2026-09-06T00:56:00.000Z", CHECK_INTERVAL_MS, now),
+    true,
+  );
+  assert.equal(
+    isUpdateCheckFresh("2026-09-06T00:50:00.000Z", CHECK_INTERVAL_MS, now),
+    false,
+  );
+  const shiftedColumn = new Date("2026-09-05T17:56:00.000Z");
+  assert.equal(isUpdateCheckFresh(shiftedColumn, CHECK_INTERVAL_MS, now), false);
+  assert.equal(isUpdateCheckFresh(null, CHECK_INTERVAL_MS, now), false);
 });
