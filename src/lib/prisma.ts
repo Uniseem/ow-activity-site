@@ -119,7 +119,11 @@ function normalizeLists(value: unknown): unknown {
     return value;
   return Object.fromEntries(
     Object.entries(value).map(([key, item]) => {
-      if (key === "mainHeroes" || key === "heroes") {
+      if (
+        key === "mainHeroes" ||
+        key === "heroes" ||
+        key === "adminPermissions"
+      ) {
         if (
           !Array.isArray(item) ||
           !item.every((entry) => typeof entry === "string")

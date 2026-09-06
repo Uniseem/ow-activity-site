@@ -71,6 +71,8 @@ export async function registerInitialAdmin(
         passwordHash,
         role: "ADMIN",
         status: "APPROVED",
+        primaryAdmin: true,
+        adminPermissions: [],
         profile: {
           create: {
             displayName: data.displayName,

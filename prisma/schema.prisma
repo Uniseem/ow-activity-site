@@ -91,6 +91,8 @@ model User {
   passwordHash         String?
   role                 UserRole            @default(USER)
   status               UserStatus          @default(PENDING)
+  primaryAdmin         Boolean             @default(false)
+  adminPermissions     String[]            @default([])
   profile              Profile?
   sessions             Session[]
   oauthAccounts        OAuthAccount[]
@@ -235,6 +237,18 @@ model EventRegistration {
   @@unique([eventId, userId])
   @@index([status])
   @@index([userId])
+}
+
+model AiSettings {
+  id              String   @id
+  preset          String   @default("openai")
+  baseUrl         String   @default("")
+  encryptedApiKey String?
+  model           String   @default("")
+  autoReview      Boolean  @default(false)
+  revision        Int      @default(0)
+  updatedById     String?
+  updatedAt       DateTime @updatedAt
 }
 
 model SiteSettings {

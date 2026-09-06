@@ -104,6 +104,7 @@ test("注册失败回滚初始化机会，并发请求仅产生一名管理员",
       include: { profile: true },
     });
     assert.equal(admin.status, "APPROVED");
+    assert.equal(admin.primaryAdmin, true);
     assert.equal(admin.profile?.reviewStatus, "APPROVED");
     assert.ok(admin.passwordHash);
     assert.equal(await bcrypt.compare(password, admin.passwordHash), true);

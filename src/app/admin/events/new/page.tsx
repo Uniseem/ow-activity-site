@@ -2,7 +2,7 @@ import { createEventAction } from "@/app/actions";
 import { EventForm } from "@/components/event-form";
 import { PageHeading } from "@/components/page-heading";
 import { ButtonLink, Card, Notice } from "@/components/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export default async function NewEventPage({
@@ -10,7 +10,7 @@ export default async function NewEventPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireAdmin();
+  await requirePermission("events");
   const query = searchParams ? await searchParams : {};
   return (
     <main className="page-shell">

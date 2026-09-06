@@ -1,12 +1,15 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { usesD1 } from "@/lib/database-provider";
+import { hasPermission, type AdminActor } from "@/lib/admin-permissions";
 import {
   articleExcerpt,
   articleInputSchema,
   type ArticleInput,
 } from "@/lib/article-input";
 
-type Actor = { id: string; role: string; status: string } | null;
+type Actor =
+  | (Extract<AdminActor, object> & { id: string })
+  | null;
 export class ArticleConflictError extends Error {
   constructor() {
     super(
@@ -17,8 +20,7 @@ export class ArticleConflictError extends Error {
 export function assertArticleAdmin(
   actor: Actor,
 ): asserts actor is NonNullable<Actor> {
-  if (!actor || actor.role !== "ADMIN" || actor.status !== "APPROVED")
-    throw new Error("无权管理文章。");
+  if (!hasPermission(actor, "articles")) throw new Error("无权管理文章。");
 }
 export async function saveArticle(
   db: PrismaClient,

@@ -93,6 +93,10 @@ export async function GET(
     );
     if (flow.linkUserId) return respond("/me?oauth=linked");
     await createSession(result.user.id);
+    if (result.created && result.user.role !== "ADMIN") {
+      const { maybeAutoReviewByUserId } = await import("@/lib/ai/review");
+      await maybeAutoReviewByUserId(result.user.id);
+    }
     return respond(
       result.user.role === "ADMIN"
         ? "/admin"

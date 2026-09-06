@@ -1,7 +1,7 @@
 import { OAuthSettingsForm } from "@/components/oauth-settings-form";
 import { PageHeading } from "@/components/page-heading";
 import { Notice } from "@/components/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { callbackPath } from "@/lib/oauth/config";
 import { hasEncryptionKey } from "@/lib/oauth/security";
@@ -10,7 +10,7 @@ import { oauthProviders } from "@/lib/oauth/shared";
 
 export const dynamic = "force-dynamic";
 export default async function OAuthSettingsPage() {
-  await requireAdmin();
+  await requirePermission("oauth");
   const [rows, origin] = await Promise.all([
     prisma.oAuthConfig.findMany(),
     pageOAuthOrigin(),

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { type PrismaClient, type Prisma } from "../generated/prisma/client";
+import { hasPermission } from "./admin-permissions";
 import { seal, unseal, hasEncryptionKey } from "./oauth/security";
 import { validateSiteAsset } from "./site-asset";
 import { BACKUP_CHUNK_BYTES, BACKUP_FORMAT, BACKUP_MAX_BYTES, BACKUP_MAX_MEDIA_BYTES, BACKUP_MAX_ASSET_BYTES, BACKUP_MAX_FILES, BACKUP_TABLES, BACKUP_VERSION, BackupError, backupManifestSchema, fileChunkCount, fileChunkStart, manifestChunkCount, validateBackupSnapshot, type BackupManifest, type BackupRow, type BackupSnapshot } from "./backup-format";
@@ -7,9 +8,10 @@ import { BACKUP_CHUNK_BYTES, BACKUP_FORMAT, BACKUP_MAX_BYTES, BACKUP_MAX_MEDIA_B
 type TransferDb = Pick<PrismaClient, "backupTransfer" | "backupChunk">;
 const TTL = 30 * 60 * 1000;
 const hookContext = "site-update:vercel-deploy-hook";
-const modelNames = ["user", "profile", "adminSetup", "oAuthConfig", "oAuthAccount", "updateSettings", "event", "eventRegistration", "article", "siteSettings", "siteAsset"];
-const deleteOrder = ["Session", "OAuthState", "EventRegistration", "Article", "Profile", "OAuthAccount", "Event", "User", "AdminSetup", "OAuthConfig", "UpdateSettings", "SiteSettings", "SiteAsset"];
-const insertOrder = ["User", "Profile", "AdminSetup", "OAuthConfig", "OAuthAccount", "UpdateSettings", "Event", "EventRegistration", "Article", "SiteSettings", "SiteAsset"];
+const modelNames = ["user", "profile", "adminSetup", "oAuthConfig", "oAuthAccount", "updateSettings", "aiSettings", "event", "eventRegistration", "article", "siteSettings", "siteAsset"];
+const deleteOrder = ["Session", "OAuthState", "EventRegistration", "Article", "Profile", "OAuthAccount", "Event", "User", "AdminSetup", "OAuthConfig", "UpdateSettings", "AiSettings", "SiteSettings", "SiteAsset"];
+const insertOrder = ["User", "Profile", "AdminSetup", "OAuthConfig", "OAuthAccount", "UpdateSettings", "AiSettings", "Event", "EventRegistration", "Article", "SiteSettings", "SiteAsset"];
+const aiKeyContext = "ai-settings:review";
 const digest = (data: Uint8Array) => createHash("sha256").update(data).digest("hex");
 const isD1 = () => process.env.DATABASE_PROVIDER === "d1";
 
@@ -24,6 +26,10 @@ export function portableSnapshot(snapshot: BackupSnapshot, key: string | undefin
     if (table === "UpdateSettings") {
       row.deployHook = row.encryptedDeployHook ? unseal(String(row.encryptedDeployHook), hookContext, key) : null;
       for (const field of ["encryptedDeployHook", "checkKey", "checkResult", "checkedAt", "checkLease", "checkLeaseUntil", "deployRequestedAt", "deployRequestedSha", "deployJobId"]) delete row[field];
+    }
+    if (table === "AiSettings") {
+      row.apiKey = row.encryptedApiKey ? unseal(String(row.encryptedApiKey), aiKeyContext, key) : null;
+      delete row.encryptedApiKey;
     }
     return row;
   }) }));
@@ -42,6 +48,11 @@ export function restoredSnapshot(snapshot: BackupSnapshot, key: string | undefin
       row.encryptedDeployHook = row.deployHook ? seal(String(row.deployHook), hookContext, key) : null;
       delete row.deployHook;
       for (const field of ["checkKey", "checkResult", "checkedAt", "checkLease", "checkLeaseUntil", "deployRequestedAt", "deployRequestedSha", "deployJobId"]) row[field] = null;
+    }
+    if (table === "AiSettings") {
+      if (row.apiKey && !hasEncryptionKey(key)) throw new BackupError("此备份含模型密钥，请先为目标站点设置 OAUTH_ENCRYPTION_KEY。");
+      row.encryptedApiKey = row.apiKey ? seal(String(row.apiKey), aiKeyContext, key) : null;
+      delete row.apiKey;
     }
     if (table === "AdminSetup" && !row.completedAt) row.completedAt = new Date().toISOString();
     return row;
@@ -237,7 +248,7 @@ export async function replaceDatabaseSnapshot(db: PrismaClient, snapshot: Backup
     // late asset checksum mismatch or constraint violation rolls back all deletes.
     await tx.$executeRawUnsafe(`LOCK TABLE ${deleteOrder.map((table) => `"${table}"`).join(", ")} IN EXCLUSIVE MODE`);
     const admin = await tx.user.findUnique({ where: { id: adminId } });
-    if (admin?.role !== "ADMIN" || admin.status !== "APPROVED") throw new BackupError("管理员登录已失效，请重新登录。");
+    if (!hasPermission(admin, "backup")) throw new BackupError("管理员登录已失效，或没有备份权限。");
     for (const table of deleteOrder) await tx.$executeRawUnsafe(`DELETE FROM "${table}"`);
     for (const table of insertOrder) {
       const rows = snapshot.find((entry) => entry.table === table)!.rows;

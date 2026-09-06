@@ -1,3 +1,4 @@
+import { grantedPermissions } from "@/lib/admin-permissions";
 import { getCurrentSession, shouldOpenAdminSetup } from "@/lib/auth";
 import { SiteNav } from "@/components/site-nav";
 import { AdminUpdateNotifier } from "@/components/admin-update-notifier";
@@ -20,6 +21,7 @@ export async function Header({ children }: { children: React.ReactNode }) {
                 name: user.profile?.displayName ?? user.username,
                 avatarUrl: user.profile?.avatarUrl,
                 isAdmin: user.role === "ADMIN" && user.status === "APPROVED",
+                permissions: grantedPermissions(user),
               }
             : null
         }

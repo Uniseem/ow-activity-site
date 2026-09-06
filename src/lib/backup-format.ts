@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeRestoredAdmins } from "@/lib/admin-permissions";
 
 export const BACKUP_VERSION = 1;
 export const BACKUP_FORMAT = "sjtu-ow-site-backup";
@@ -14,7 +15,7 @@ export const BACKUP_MAX_CHUNKS =
   Math.max(BACKUP_MAX_FILES - 1, Math.ceil(BACKUP_MAX_MEDIA_BYTES / BACKUP_CHUNK_BYTES));
 export const BACKUP_MAX_REQUEST_BYTES = 2 * 1024 * 1024;
 export const BACKUP_MAX_UPLOAD_BASE64 = Math.ceil((BACKUP_CHUNK_BYTES * 4) / 3);
-export const BACKUP_TABLES = ["User", "Profile", "AdminSetup", "OAuthConfig", "OAuthAccount", "UpdateSettings", "Event", "EventRegistration", "Article", "SiteSettings", "SiteAsset"] as const;
+export const BACKUP_TABLES = ["User", "Profile", "AdminSetup", "OAuthConfig", "OAuthAccount", "UpdateSettings", "AiSettings", "Event", "EventRegistration", "Article", "SiteSettings", "SiteAsset"] as const;
 export const BACKUP_FOREIGN_USER_FIELDS = ["userId", "authorId", "createdById", "reviewedById"] as const;
 export const BACKUP_AUDIT_USER_FIELDS = ["updatedById", "uploadedById"] as const;
 export type BackupTable = typeof BACKUP_TABLES[number];
@@ -35,12 +36,13 @@ const provider = z.enum(["google", "github"]);
 const revision = z.number().int().nonnegative().max(2_147_483_000);
 const passwordHash = z.string().regex(/^\$2[aby]\$(?:0[4-9]|[12]\d|3[01])\$[./A-Za-z0-9]{53}$/).nullable();
 const rowSchemas = {
-  User: z.strictObject({ id, username: z.string().min(1).max(200), passwordHash, role: z.enum(["USER", "ADMIN"]), status: z.enum(["PENDING", "APPROVED", "REJECTED", "BANNED"]), ...timestamps }),
+  User: z.strictObject({ id, username: z.string().min(1).max(200), passwordHash, role: z.enum(["USER", "ADMIN"]), status: z.enum(["PENDING", "APPROVED", "REJECTED", "BANNED"]), primaryAdmin: z.boolean().optional().default(false), adminPermissions: z.array(z.string().min(1).max(40)).max(20).optional().default([]), ...timestamps }),
   Profile: z.strictObject({ id, userId: id, avatarUrl: z.string().max(3_000_000).nullable(), displayName: short, slogan: short, battleTag: short.nullable(), mainRole: playerRole.nullable(), mainHeroes: z.array(short).max(100), rank: short.nullable(), onlineTime: short.nullable(), contact: short.nullable(), extraNote: optionalText, reviewStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]), reviewNote: optionalText, reviewedById: optionalId, reviewedAt: optionalDate, ...timestamps }),
   AdminSetup: z.strictObject({ id: z.literal("initial-admin"), completedAt: optionalDate }),
   OAuthConfig: z.strictObject({ provider, clientId: short, clientSecret: short.nullable(), enabled: z.boolean(), revision, updatedById: optionalId, updatedAt: date }),
   OAuthAccount: z.strictObject({ id, userId: id, provider, providerAccountId: z.string().min(1).max(500), email: short.nullable(), createdAt: date }),
   UpdateSettings: z.strictObject({ id: z.literal("global"), repositoryUrl: short, branch: short, deployHook: short.nullable(), revision, updatedById: optionalId, updatedAt: date }),
+  AiSettings: z.strictObject({ id: z.literal("review"), preset: short, baseUrl: short, apiKey: short.nullable(), model: short, autoReview: z.boolean(), revision, updatedById: optionalId, updatedAt: date }),
   Event: z.strictObject({ id, title: short, description: text, coverUrl: short, type: z.enum(["SCRIM", "FUN", "TRAINING", "CUSTOM", "WATCH"]), customType: short.nullable(), startTime: date, signupDeadline: optionalDate, signupClosed: z.boolean(), maxParticipants: z.number().int().positive().max(1_000_000), requirements: optionalText, voiceChannel: short.nullable(), status: z.enum(["DRAFT", "OPEN", "CLOSED", "RUNNING", "FINISHED", "CANCELLED"]), createdById: id, ...timestamps }),
   EventRegistration: z.strictObject({ id, eventId: id, userId: id, preferredRole: playerRole.nullable(), heroes: z.array(short).max(100), voiceAvailable: z.boolean(), note: optionalText, status: z.enum(["PENDING", "APPROVED", "REJECTED", "CANCELLED"]), reviewedById: optionalId, reviewedAt: optionalDate, ...timestamps }),
   Article: z.strictObject({ id, title: short, excerpt: text, coverUrl: short, content: z.string().max(4_000_000), status: z.enum(["DRAFT", "PUBLISHED"]), revision, authorId: id, publishedAt: optionalDate, ...timestamps }),
@@ -54,12 +56,13 @@ export type BackupPreview = {
 };
 
 export function validateBackupSnapshot(value: unknown): { snapshot: BackupSnapshot; preview: BackupPreview } {
-  const outer = z.array(z.strictObject({ table: z.enum(BACKUP_TABLES), rows: z.array(z.record(z.string(), z.unknown())).max(BACKUP_MAX_ROWS) })).length(BACKUP_TABLES.length).safeParse(value);
-  if (!outer.success || new Set(outer.data.map((entry) => entry.table)).size !== BACKUP_TABLES.length)
+  const outer = z.array(z.strictObject({ table: z.enum(BACKUP_TABLES), rows: z.array(z.record(z.string(), z.unknown())).max(BACKUP_MAX_ROWS) })).min(BACKUP_TABLES.length - 1).max(BACKUP_TABLES.length).safeParse(value);
+  const present = outer.success ? new Set(outer.data.map((entry) => entry.table)) : new Set<string>();
+  if (!outer.success || BACKUP_TABLES.some((table) => table !== "AiSettings" && !present.has(table)))
     throw new BackupError("备份数据表不完整或版本不兼容。");
   let count = 0;
   const snapshot: BackupSnapshot = BACKUP_TABLES.map((table) => {
-    const rows = outer.data.find((entry) => entry.table === table)!.rows;
+    const rows = outer.data.find((entry) => entry.table === table)?.rows ?? [];
     count += rows.length;
     if (count > BACKUP_MAX_ROWS) throw new BackupError("备份超过 50,000 条记录限制。");
     const parsed = z.array(rowSchemas[table]).safeParse(rows);
@@ -85,9 +88,10 @@ export function validateBackupSnapshot(value: unknown): { snapshot: BackupSnapsh
     if (entry.table === "EventRegistration" && !events.has(row.eventId)) throw new BackupError("报名记录引用了不存在的活动。");
     if (entry.table === "OAuthConfig" && row.enabled && (!row.clientId || !row.clientSecret)) throw new BackupError("启用的第三方登录缺少应用密钥。");
   }
+  normalizeRestoredAdmins(rows("User"));
   const administrators = rows("User").filter((row) => row.role === "ADMIN" && row.status === "APPROVED" && row.passwordHash).map((row) => String(row.username));
   if (!administrators.length) throw new BackupError("备份必须包含至少一个已启用且设有密码的管理员账号，以便恢复后登录。");
-  return { snapshot, preview: { users: rows("User").length, administrators, articles: rows("Article").length, events: rows("Event").length, registrations: rows("EventRegistration").length, assets: rows("SiteAsset").length, hasSecrets: rows("OAuthConfig").some((row) => row.clientSecret) || rows("UpdateSettings").some((row) => row.deployHook) } };
+  return { snapshot, preview: { users: rows("User").length, administrators, articles: rows("Article").length, events: rows("Event").length, registrations: rows("EventRegistration").length, assets: rows("SiteAsset").length, hasSecrets: rows("OAuthConfig").some((row) => row.clientSecret) || rows("UpdateSettings").some((row) => row.deployHook) || rows("AiSettings").some((row) => row.apiKey) } };
 }
 
 const fileSchema = z.strictObject({

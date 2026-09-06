@@ -1,11 +1,11 @@
 import { UpdateSettingsForm } from "@/components/update-settings-form";
 import { PageHeading } from "@/components/page-heading";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUpdateSettings, settingsView } from "@/lib/updates/service";
 export const dynamic = "force-dynamic";
 export default async function UpdatesPage() {
-  await requireAdmin();
+  await requirePermission("updates");
   const settings = settingsView(await getUpdateSettings(prisma));
   return (
     <main className="page-shell">

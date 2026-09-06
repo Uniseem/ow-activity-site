@@ -7,7 +7,7 @@ import { EventForm } from "@/components/event-form";
 import { RegistrationReviewTabs } from "@/components/registration-review-tabs";
 import { EmptyState, PageHeading } from "@/components/page-heading";
 import { ButtonLink, Card, Chip, Notice, StatusChip } from "@/components/ui";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import {
   reviewLabels,
   eventStatusLabels,
@@ -26,7 +26,7 @@ export default async function AdminEventPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireAdmin();
+  await requirePermission("events");
   const { id } = await params;
   const query = searchParams ? await searchParams : {};
   await syncEventStatuses();

@@ -5,6 +5,7 @@ import {
   KeyRound,
   LayoutDashboard,
   RefreshCw,
+  Sparkles,
   Settings2,
   Users,
 } from "lucide-react";
@@ -24,6 +25,7 @@ export const adminNavigation = [
     links: [
       { href: "/admin/customize", label: "基本设置", icon: Settings2 },
       { href: "/admin/oauth", label: "第三方登录", icon: KeyRound },
+      { href: "/admin/ai", label: "AI 审核", icon: Sparkles },
       { href: "/admin/updates", label: "版本更新", icon: RefreshCw },
       { href: "/admin/backup", label: "备份与恢复", icon: DatabaseBackup },
     ],

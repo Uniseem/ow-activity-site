@@ -7,6 +7,11 @@ import { redirect } from "next/navigation";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { canSetUpAdmin } from "@/lib/admin-setup";
+import {
+  hasPermission,
+  isPrimaryAdmin,
+  type AdminPermission,
+} from "@/lib/admin-permissions";
 
 export const SESSION_COOKIE = "ow_activity_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14;
@@ -118,6 +123,22 @@ export async function requireAdmin() {
     redirect("/");
   }
 
+  return user;
+}
+
+export async function requirePermission(permission: AdminPermission) {
+  const user = await requireAdmin();
+  if (!hasPermission(user, permission)) {
+    redirect("/admin");
+  }
+  return user;
+}
+
+export async function requirePrimaryAdmin() {
+  const user = await requireAdmin();
+  if (!isPrimaryAdmin(user)) {
+    redirect("/admin");
+  }
   return user;
 }
 
