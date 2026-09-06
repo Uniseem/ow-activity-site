@@ -13,7 +13,6 @@ const deleteOrder = ["Session", "OAuthState", "EventRegistration", "Article", "P
 const insertOrder = ["User", "Profile", "AdminSetup", "OAuthConfig", "OAuthAccount", "UpdateSettings", "AiSettings", "Event", "EventRegistration", "Article", "SiteSettings", "SiteAsset"];
 const aiKeyContext = "ai-settings:review";
 const digest = (data: Uint8Array) => createHash("sha256").update(data).digest("hex");
-const isD1 = () => process.env.DATABASE_PROVIDER === "d1";
 
 export function portableSnapshot(snapshot: BackupSnapshot, key: string | undefined): BackupSnapshot {
   return snapshot.map(({ table, rows }) => ({ table, rows: rows.map((source) => {
@@ -137,11 +136,6 @@ async function prepareTransfer(db: PrismaClient, ownerId: string) {
 export async function startBackupExport(db: PrismaClient, ownerId: string, key: string | undefined) {
   await prepareTransfer(db, ownerId);
   try {
-    if (isD1()) {
-      const transfer = await import("./database-transfer");
-      const snapshot = await transfer.exportD1Snapshot();
-      return await freezeExport(db, snapshot, ownerId, key, (asset) => transfer.readD1BackupAsset(String(asset.storageKey)));
-    }
     return await db.$transaction(async (tx) => freezeExport(tx, await postgresMetadata(tx), ownerId, key, async (asset) => {
       const row = await tx.siteAsset.findUnique({ where: { id: String(asset.id) }, select: { data: true } });
       if (!row) throw new BackupError("备份图片不存在。");
@@ -234,24 +228,6 @@ export async function replaceDatabaseSnapshot(
   options?: { setup?: boolean },
 ) {
   const assetIndex = new Map(media?.manifest.files.map((file, index) => [file.path, index]));
-  if (isD1()) {
-    const transfer = await import("./database-transfer");
-    const keys: string[] = [];
-    try {
-      for (const asset of snapshot.find((entry) => entry.table === "SiteAsset")!.rows) {
-        if (!media) throw new BackupError("缺少恢复图片来源。");
-        const bytes = await readStagedFile(db, media.transferId, media.manifest, assetIndex.get(`media/${asset.id}.bin`)!);
-        await validateAssetBytes(asset, bytes);
-        const storageKey = await transfer.writeD1RestoreAsset(bytes, String(asset.mimeType));
-        keys.push(storageKey); asset.storageKey = storageKey; asset.byteSize = bytes.length;
-      }
-      await transfer.replaceD1Snapshot(
-        snapshot,
-        options?.setup ? { setup: true } : { adminId: actorId },
-      );
-    } catch (error) { await transfer.deleteD1RestoreAssets(keys).catch(() => {}); throw error; }
-    return;
-  }
   await db.$transaction(async (tx) => {
     // Exclude concurrent writers while replacing every table. Any failed insert,
     // late asset checksum mismatch or constraint violation rolls back all deletes.
@@ -300,7 +276,6 @@ export async function restoreBackupImport(
     { transferId: id, manifest: parsed.manifest },
     options,
   );
-  if (isD1()) await db.backupTransfer.deleteMany();
   return { ok: true, administrators: parsed.preview.administrators };
 }
 export async function cancelBackupTransfer(db: PrismaClient, id: string, ownerId: string) {

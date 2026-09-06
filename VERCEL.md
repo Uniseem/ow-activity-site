@@ -1,6 +1,8 @@
 # 部署到 Vercel
 
-Vercel 托管 Next.js 页面和服务端逻辑，Marketplace 里的 Neon Postgres 保存账号、会话、资料、活动与报名。这条路径由 Vercel 自己执行 `npm run vercel-build`，不走仓库里打包 Cloudflare / Docker 的 GitHub Actions。
+**这是本仓库强烈推荐的部署方式。** 新站点、校园公开站和日常更新都应走 Vercel，不要再用 Cloudflare Workers。
+
+Vercel 托管 Next.js 页面和服务端逻辑，Marketplace 里的 Neon Postgres 保存账号、会话、资料、活动与报名。构建由 Vercel 自己执行 `npm run vercel-build`。后台「版本更新」里的 Deploy Hook 也只对这条路径有效。
 
 ## 创建项目和数据库
 

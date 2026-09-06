@@ -1,6 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { isD1Database } from "@/lib/database-provider";
-import { reviewD1Profile } from "@/lib/d1-atomic";
 
 export async function applyProfileReview(input: {
   profileId: string;
@@ -8,15 +6,6 @@ export async function applyProfileReview(input: {
   note: string | null;
   reviewerId: string | null;
 }) {
-  if (isD1Database()) {
-    await reviewD1Profile(
-      input.profileId,
-      input.decision,
-      input.note,
-      input.reviewerId,
-    );
-    return;
-  }
   await prisma.$transaction(async (tx) => {
     const profile = await tx.profile.update({
       where: { id: input.profileId },

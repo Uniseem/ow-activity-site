@@ -31,11 +31,6 @@ import { assertDatabaseConfigured, prisma } from "@/lib/prisma";
 import { parseEventInput } from "@/lib/event-input";
 import { eventStatusLabels } from "@/lib/format";
 import { syncEventStatuses } from "@/lib/event-schedule";
-import { isD1Database } from "@/lib/database-provider";
-import {
-  createD1User,
-  reviewD1Registration,
-} from "@/lib/d1-atomic";
 
 export type FormState = {
   message: string;
@@ -112,21 +107,19 @@ export async function registerAction(
 
     const passwordHash = await bcrypt.hash(parsed.data.password, 12);
 
-    const user = isD1Database()
-      ? await createD1User({ ...parsed.data, passwordHash })
-      : await prisma.user.create({
-          data: {
-            username: parsed.data.username,
-            passwordHash,
-            profile: {
-              create: {
-                displayName: parsed.data.displayName,
-                slogan: parsed.data.slogan,
-                reviewStatus: "PENDING",
-              },
-            },
+    const user = await prisma.user.create({
+      data: {
+        username: parsed.data.username,
+        passwordHash,
+        profile: {
+          create: {
+            displayName: parsed.data.displayName,
+            slogan: parsed.data.slogan,
+            reviewStatus: "PENDING",
           },
-        });
+        },
+      },
+    });
 
     await createSession(user.id);
     const { maybeAutoReviewByUserId } = await import("@/lib/ai/review");
@@ -713,14 +706,7 @@ export async function reviewRegistrationAction(
     return { ok: false, message: "报名信息无效，请刷新后重试。" };
   }
 
-  const result = isD1Database()
-    ? await reviewD1Registration(
-        registrationId,
-        eventId,
-        decision as "APPROVED" | "REJECTED",
-        admin.id,
-      )
-    : await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
         // 同一活动串行审核，避免多人同时通过报名时超出人数上限。
         await tx.$queryRaw`SELECT "id" FROM "Event" WHERE "id" = ${eventId} FOR UPDATE`;
         const registration = await tx.eventRegistration.findFirst({

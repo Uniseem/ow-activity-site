@@ -35,13 +35,9 @@ yarn-error.log*
 !.env.example
 !deploy/.env.example
 
-# Cloudflare build artifacts and local bindings
+# leftover Cloudflare build artifacts
 /.open-next/
 /.wrangler/
-**/.wrangler/
-.dev.vars*
-!.dev.vars.example
-/src/generated/prisma-d1/
 
 # vercel
 .vercel
@@ -52,7 +48,3 @@ next-env.d.ts
 
 /src/generated/prisma
 /src/generated/prisma-d1
-/.open-next/
-/.wrangler/
-.dev.vars*
-!.dev.vars.example

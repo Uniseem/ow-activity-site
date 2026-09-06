@@ -1,13 +1,14 @@
 # 上海交大守望先锋社区
 
-面向守望先锋校园玩家的非官方社区活动站，使用 Next.js + React 全栈架构。可部署到 Vercel、全部使用 Cloudflare 资源，或在自己的 VPS 上运行。
+面向守望先锋校园玩家的非官方社区活动站，使用 Next.js + React 全栈架构。
+
+**强烈推荐部署到 Vercel**（Functions + Marketplace 里的 Neon Postgres）。这是本仓库的默认和首选路径：构建、数据库、定时任务和一键更新都按这条来写。自建 VPS 仅在你必须把站点放在自己机器上时使用。仓库不再支持 Cloudflare Workers / D1 / R2。
 
 ## 选择部署方式
 
 | 方式 | 网站与数据库 | 谁来构建 | 说明 |
 | --- | --- | --- | --- |
-| Vercel | Vercel Functions + Marketplace 里的 Neon Postgres | Vercel 自己构建（`vercel-build`） | [Vercel 部署](./VERCEL.md) |
-| 全 Cloudflare | Workers + D1 + R2 图片及缓存 + Workers 静态资源 | GitHub Actions 打 OpenNext 包 | [Cloudflare 部署](./docs/Cloudflare部署.md) |
+| **Vercel（推荐）** | Vercel Functions + Marketplace 里的 Neon Postgres | Vercel 自己构建（`vercel-build`） | [Vercel 部署](./VERCEL.md) |
 | VPS 一行命令 | Docker Compose、PostgreSQL、可选 Caddy HTTPS | 目标机本地构建镜像 | [VPS 一键部署](./docs/VPS部署.md#一行安装) |
 | VPS Docker Compose | 自己填配置并管容器，数据在持久卷 | 目标机本地构建镜像 | [Docker Compose 部署](./docs/VPS部署.md#直接使用-docker-compose) |
 
@@ -19,9 +20,9 @@ curl -fsSL https://raw.githubusercontent.com/Uniseem/ow-activity-site/main/scrip
 
 首次打开 `/admin`，没有管理员时会转到 `/admin/setup`。迁移已有网站时，到后台「备份与恢复」导入旧站 ZIP，账号、密码、内容和设置会换成备份里的数据。详见 [备份与恢复](./docs/备份与恢复.md)。
 
-推到 `main` 或开 Pull Request 时，GitHub Actions 在 Ubuntu 上跑单测，打 Cloudflare 的 `.open-next`（Artifact 保留 7 天），并构建 Docker 的 `runner` / `migrate` 镜像。只有推到 `main` 才会把镜像送到 `ghcr.io/uniseem/ow-activity-site`（标签为提交 SHA 和 `main`）。VPS 安装脚本和 `compose.yml` 仍在目标机本地构建，不拉这个仓库镜像。
+推到 `main` 或开 Pull Request 时，GitHub Actions 在 Ubuntu 上跑单测，并构建 Docker 的 `runner` / `migrate` 镜像。只有推到 `main` 才会把镜像送到 `ghcr.io/uniseem/ow-activity-site`（标签为提交 SHA 和 `main`）。VPS 安装脚本和 `compose.yml` 仍在目标机本地构建，不拉这个仓库镜像。
 
-Cloudflare 要发布到 Workers，在 Actions 里手动运行 **CI**，勾选「打包完成后部署到 Cloudflare Workers」，并事先写好仓库 Secrets（`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`）和 `wrangler.jsonc` 里的真实 D1 ID。`vercel.json` 已关闭 Git 自动发布，Vercel 需要在控制台手动 Deploy，或使用 CLI / Deploy Hook。`cf:build`、`cf:preview`、`cf:deploy` 都会先打 OpenNext 包，请在 Linux 或 Actions 里执行。
+正式站点请用 Vercel。`vercel.json` 已关闭 Git 自动发布，需要发布时在控制台手动 Deploy，或使用 CLI / Deploy Hook。不要再走 Cloudflare Workers。
 
 ## 架构
 
@@ -29,14 +30,14 @@ Cloudflare 要发布到 Workers，在 Actions 里手动运行 **CI**，勾选「
 浏览器 → Next.js App Router / React
        → Server Components 读取数据、Server Actions 处理表单
        → Prisma 7
-       → PostgreSQL（Vercel / VPS）或 D1（Cloudflare）
+       → PostgreSQL（Vercel / VPS）
 ```
 
 - Next.js 16、React 19、TypeScript、Tailwind CSS 4、HeroUI 3。
 - 页面、登录会话、权限校验、资料与报名审核都运行在同一个 Next.js 项目中。
-- Vercel 和 VPS 使用 Node.js；Cloudflare 通过 OpenNext 运行于 Workers，无需独立后端项目。
-- PostgreSQL 运行时通过 `DATABASE_URL` 连接，迁移优先使用 `DATABASE_URL_UNPOOLED`；D1 使用 Worker 的 `DB` 绑定和独立 SQLite 迁移。
-- 上传图片在 PostgreSQL 部署中保存在数据库，在 Cloudflare 部署中使用 R2。
+- Vercel 和 VPS 都在 Node.js 上跑同一个 Next.js 项目，无需独立后端。
+- PostgreSQL 运行时通过 `DATABASE_URL` 连接，迁移优先使用 `DATABASE_URL_UNPOOLED`。
+- 上传图片保存在数据库。
 - bcrypt 保存密码哈希，HttpOnly Cookie 保存随机会话令牌，数据库仅存令牌哈希；会话有效期 14 天。
 
 Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace 接入。这里采用 Vercel 管理的 Neon 集成，详见 [Vercel Postgres 文档](https://vercel.com/docs/postgres)。
@@ -61,7 +62,7 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 - 报名检查活动状态、截止时间和已通过人数，并限制重复报名。
 - 管理后台以待办为首页，活动、文章与用户采用列表进入具体操作；报名审核与活动设置分开，次要设置按需展开。
 - 社区文章：后台嵌入开源 Tiptap 富文本编辑器，支持 Markdown 源码、预览、导入导出、图片、表格，以及草稿、发布、撤回和删除；前台提供文章列表、搜索、分页和阅读页。
-- 整站备份与恢复：后台导出一个 ZIP；新站可导入并覆盖账号、密码哈希、第三方账号关联、文章、活动、报名、设置和上传图片，支持 PostgreSQL 与 D1 之间迁移。
+- 整站备份与恢复：后台导出一个 ZIP；新站可导入并覆盖账号、密码哈希、第三方账号关联、文章、活动、报名、设置和上传图片，可在 Vercel 与 VPS 之间迁移。
 
 首页将近期活动和最新文章并排展示，每栏首条突出，其余条目紧凑排列，手机上转为单栏；下方“交大玩家”以横向卡片带展示查询到的最多 8 名玩家。卡片溢出时，进入视区约 1 秒后开始自动滚动，每次用 2 秒非线性缓动前进一张，停留约 0.8 秒后继续，到达两端后反向。支持左右按钮、键盘与原生触摸滚动；手动翻页、拖动或横向滚轮操作后会短暂停留并自动恢复，鼠标停留不阻止自动滚动。只有暂停按钮会持续暂停，点击播放可恢复；键盘焦点停留在轮播中、区域离屏、页面隐藏或系统启用“减少动态效果”时暂不自动滚动。
 
@@ -79,7 +80,7 @@ Vercel 原独立 Postgres 产品已停止提供，新项目通过 Marketplace �
 - 主题：固定采用 HeroUI 官方默认配色，不再提供主色选择器。旧版颜色配置保留存储兼容，但不参与界面渲染。
 - 点击“保存设置”后生效，无需重新部署；支持撤销未保存修改和清除图片。多人同时编辑时会提示版本冲突，防止覆盖其他管理员的修改。
 
-配置存于 `SiteSettings`，图片通过 `SiteAsset` 记录和 `/api/site-assets/[id]` 提供公开的只读访问；Cloudflare 将图片文件保存在 R2。上传和修改均需要已通过审核的管理员权限。
+配置存于 `SiteSettings`，图片通过 `SiteAsset` 记录和 `/api/site-assets/[id]` 提供公开的只读访问。上传和修改均需要已通过审核的管理员权限。
 
 `src/lib/site-copy.ts` 定义基础品牌文案，`src/lib/site-config.ts` 定义默认值与校验规则。功能按钮、表单提示和状态标签保持固定；活动及玩家数据在对应管理页面编辑。
 
@@ -140,8 +141,7 @@ Deploy Hook 只部署其绑定的仓库分支，不会自动合并上游仓库�
 
 | 变量                    | 用途                                                                                 |
 | ----------------------- | ------------------------------------------------------------------------------------ |
-| `DATABASE_PROVIDER`     | 默认 `postgresql`；Cloudflare 使用 `d1` |
-| `DATABASE_URL`          | PostgreSQL 部署必需；Vercel 使用 Neon pooled 地址，VPS 使用自建 PostgreSQL |
+| `DATABASE_URL`          | PostgreSQL 必需；Vercel 使用 Neon pooled 地址，VPS 使用自建 PostgreSQL |
 | `DATABASE_URL_UNPOOLED` | 迁移和初始化优先使用的直连地址；本地普通 PostgreSQL 可省略，回退到 `DATABASE_URL`    |
 | `ADMIN_USERNAME`        | 运行 `db:seed` 时的管理员用户名，默认 `admin`                                        |
 | `ADMIN_PASSWORD`        | 运行 `db:seed` 时必填，至少 8 字符、最多 72 字节、首尾无空白，无默认密码             |
@@ -168,15 +168,10 @@ Deploy Hook 只部署其绑定的仓库分支，不会自动合并上游仓库�
 | `npm run db:generate`                      | 重新生成 Prisma 客户端                         |
 | `npm run db:push`                          | 开发原型用，直接同步结构，不生成迁移历史       |
 | `npm run vercel-build`                     | 应用已有迁移，然后构建应用；由 Vercel 配置调用 |
-| `npm run cf:build`                         | 打 Cloudflare Workers 包；在 Linux 或 GitHub Actions 中执行 |
-| `npm run cf:preview`                       | 先打包再在本地 Workers 预览；同样需要 Linux |
-| `npm run cf:deploy`                        | 先打包再发布 Workers；同样需要 Linux |
-| `npm run cf:db:local`                      | 应用本地 D1 迁移 |
-| `npm run cf:db:deploy`                     | 应用远端 D1 迁移 |
 
 新数据库从 `prisma/migrations/20260905000000_init` 初始化。后续使用 `db:migrate` 生成迁移文件，与代码一起保存。已有表但没有迁移历史的数据库需要先建立基线，见 [Vercel 部署说明](./VERCEL.md)。
 
-活动独立封面来自迁移 `20260906010000_event_cover`（`Event.coverUrl`）。旧活动保持空值，公开页回落到站点默认封面。部署带该迁移的 PostgreSQL 版本时执行 `npm run db:deploy`；Vercel 的 `vercel-build` 已包含这一步。Cloudflare 使用 `npm run cf:db:deploy`，不要对 D1 跑 PostgreSQL 的 `db:deploy`。
+活动独立封面来自迁移 `20260906010000_event_cover`（`Event.coverUrl`）。旧活动保持空值，公开页回落到站点默认封面。部署带该迁移的版本时执行 `npm run db:deploy`；Vercel 的 `vercel-build` 已包含这一步。
 
 ## 目录
 
@@ -186,20 +181,18 @@ src/components/        React 组件
 src/lib/               会话、数据访问、格式化、头像和演示数据
 prisma/schema.prisma   PostgreSQL 数据模型
 prisma/migrations/     PostgreSQL 版本化 SQL 迁移
-prisma/cloudflare/     D1 数据模型与迁移
 prisma/seed.ts         管理员初始化
 public/                静态资源
 env.config.ts          Prisma 和脚本的环境变量加载
 prisma.config.ts       Prisma CLI 配置
 vercel.json            Vercel 构建配置
-wrangler.jsonc         Cloudflare Workers、D1、R2 配置
 compose.yml            VPS 容器编排
 scripts/install.sh     VPS 一行安装与更新
 deploy/                VPS 配置模板、HTTPS 与定时任务
-.github/workflows/     Linux 上的检查、Cloudflare 打包和 Docker 镜像
+.github/workflows/     Linux 上的检查和 Docker 镜像
 ```
 
-完整部署步骤见 [Vercel](./VERCEL.md)、[Cloudflare](./docs/Cloudflare部署.md) 和 [VPS](./docs/VPS部署.md)；迁移网站见 [备份与恢复](./docs/备份与恢复.md)。2026-09-06 的开发快照见 [开发交接](./docs/开发交接-2026-09-06.md)，其中未完成项以当时记录为准，打包和发布以本文与各部署文档为准。
+正式站点请先看 [Vercel 部署](./VERCEL.md)。必须自建时再看 [VPS](./docs/VPS部署.md)。迁移网站见 [备份与恢复](./docs/备份与恢复.md)。2026-09-06 的开发快照见 [开发交接](./docs/开发交接-2026-09-06.md)，其中未完成项以当时记录为准，打包和发布以本文与各部署文档为准。
 
 ## 版权说明
 
