@@ -10,6 +10,7 @@ import {
   createSession,
   destroySession,
   getCurrentUser,
+  redirectIfAdminSetupOpen,
   requireAdmin,
   requireUser,
 } from "@/lib/auth";
@@ -79,6 +80,7 @@ export async function registerAction(
   formData: FormData,
 ): Promise<FormState> {
   void _prevState;
+  await redirectIfAdminSetupOpen();
 
   const parsed = registerSchema.safeParse({
     username: text(formData, "username"),
@@ -137,6 +139,7 @@ export async function loginAction(
   formData: FormData,
 ): Promise<FormState> {
   void _prevState;
+  await redirectIfAdminSetupOpen();
 
   const parsed = loginSchema.safeParse({
     username: text(formData, "username"),

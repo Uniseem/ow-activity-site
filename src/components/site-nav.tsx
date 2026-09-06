@@ -42,11 +42,17 @@ function Brand() {
   );
 }
 
-function AccountMenu({ user }: { user: NavUser | null }) {
+function AccountMenu({
+  user,
+  loginHref,
+}: {
+  user: NavUser | null;
+  loginHref: string;
+}) {
   const [pending, startTransition] = useTransition();
   if (!user)
     return (
-      <ButtonLink href="/login" size="sm">
+      <ButtonLink href={loginHref} size="sm">
         登录
       </ButtonLink>
     );
@@ -104,9 +110,11 @@ function AccountMenu({ user }: { user: NavUser | null }) {
 export function SiteNav({
   user,
   children,
+  loginHref = "/login",
 }: {
   user: NavUser | null;
   children: ReactNode;
+  loginHref?: string;
 }) {
   const pathname = usePathname();
   const t = useSiteText();
@@ -163,7 +171,7 @@ export function SiteNav({
             </Link>
             <span className="admin-location">{pageLabel}</span>
             {user?.isAdmin ? <AdminNav /> : null}
-            <AccountMenu user={user} />
+            <AccountMenu user={user} loginHref={loginHref} />
           </FloatingHeader>
           <div className="site-workspace" id="page-content" tabIndex={-1}>
             <RouteMotion />
@@ -183,7 +191,7 @@ export function SiteNav({
           <Brand />
           <CommunityNavigation />
           <div className="community-account-wrap">
-            <AccountMenu user={user} />
+            <AccountMenu user={user} loginHref={loginHref} />
           </div>
         </div>
       </FloatingHeader>

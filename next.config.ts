@@ -34,7 +34,13 @@ const nextConfig: NextConfig = {
   // `pg-cloudflare` and pull a Node PostgreSQL driver into the Worker.
   serverExternalPackages: isD1Build
     ? ["@prisma/adapter-d1", "@prisma/client"]
-    : ["@prisma/adapter-d1", "@prisma/adapter-pg", "@prisma/client", "pg"],
+    : [
+        "@prisma/adapter-d1",
+        "@prisma/adapter-pg",
+        "@prisma/client",
+        "@vercel/functions",
+        "pg",
+      ],
   ...(isD1Build
     ? {
         outputFileTracingExcludes: {

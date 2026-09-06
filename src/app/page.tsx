@@ -4,14 +4,20 @@ import { PlayerCarousel } from "@/components/player-carousel";
 import { ArticleCard } from "@/components/article-card";
 import { ButtonLink, Card, Notice } from "@/components/ui";
 import { getLatestArticles } from "@/lib/articles-data";
+import { isAdminSetupOpen } from "@/lib/auth";
 import { getHomeData } from "@/lib/data";
 import { getSiteSettings } from "@/lib/site-settings";
 import { createSiteText } from "@/lib/site-config";
 
 export const dynamic = "force-dynamic";
 export default async function Home() {
-  const [{ events, profiles, isDemo }, { configuration }, articles] =
-    await Promise.all([getHomeData(), getSiteSettings(), getLatestArticles()]);
+  const [{ events, profiles, isDemo }, { configuration }, articles, setupOpen] =
+    await Promise.all([
+      getHomeData(),
+      getSiteSettings(),
+      getLatestArticles(),
+      isAdminSetupOpen(),
+    ]);
   const t = createSiteText(configuration);
   const upcoming = events.toSorted(
     (a, b) =>
@@ -44,6 +50,15 @@ export default async function Home() {
       </section>
       {isDemo ? (
         <Notice>当前为页面演示，连接数据库后展示真实活动和玩家。</Notice>
+      ) : null}
+      {setupOpen ? (
+        <Notice>
+          站点还没有管理员，请先{" "}
+          <a href="/admin/setup" className="text-accent underline">
+            注册首位管理员
+          </a>
+          。
+        </Notice>
       ) : null}
       <div className="home-content-grid">
         <section className="home-section" aria-labelledby="home-events">
