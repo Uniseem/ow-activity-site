@@ -94,8 +94,22 @@ export async function requireUser() {
   return user;
 }
 
+export async function isAdminSetupOpen() {
+  return isDatabaseConfigured() && (await canSetUpAdmin(prisma));
+}
+
+export async function shouldOpenAdminSetup() {
+  return !isDatabaseConfigured() || (await canSetUpAdmin(prisma));
+}
+
+export async function redirectIfAdminSetupOpen() {
+  if (await shouldOpenAdminSetup()) {
+    redirect("/admin/setup");
+  }
+}
+
 export async function requireAdmin() {
-  if (isDatabaseConfigured() && (await canSetUpAdmin(prisma))) {
+  if (await shouldOpenAdminSetup()) {
     redirect("/admin/setup");
   }
   const user = await requireUser();

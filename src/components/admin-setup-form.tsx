@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState } from "react";
 import { setUpAdminAction } from "@/app/admin/setup/actions";
 import { Button, InputField, Notice } from "@/components/ui";
@@ -65,12 +64,6 @@ export function AdminSetupForm() {
       >
         {pending ? "正在创建…" : "注册为管理员并进入后台"}
       </Button>
-      <Link
-        href="/login"
-        className="text-center text-sm text-accent hover:underline"
-      >
-        已有账号？去登录
-      </Link>
     </form>
   );
 }

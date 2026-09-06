@@ -8,8 +8,28 @@ import { isDatabaseConfigured, prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function AdminSetupPage() {
-  if (!isDatabaseConfigured() || !(await canSetUpAdmin(prisma)))
-    redirect("/admin");
+  if (!isDatabaseConfigured()) {
+    return (
+      <main className="page-shell">
+        <Card className="mx-auto max-w-lg gap-7 p-6 sm:p-9">
+          <div>
+            <span className="icon-tile">
+              <ShieldCheck size={24} />
+            </span>
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight">
+              还不能注册管理员
+            </h1>
+            <p className="mt-3 text-sm leading-7 text-muted">
+              这个本地预览没有连接数据库，首次管理员注册不会打开。请打开已经部署并配好数据库的站点，访问{" "}
+              <code>/admin</code>。
+            </p>
+          </div>
+        </Card>
+      </main>
+    );
+  }
+
+  if (!(await canSetUpAdmin(prisma))) redirect("/admin");
 
   return (
     <main className="page-shell">
