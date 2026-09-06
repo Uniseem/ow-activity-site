@@ -162,7 +162,7 @@ export async function deleteD1RestoreAssets(keys: string[]): Promise<void> {
 
 export async function replaceD1Snapshot(
   snapshot: BackupSnapshot,
-  { adminId }: { adminId: string },
+  actor: { adminId: string } | { setup: true },
 ) {
   if (
     snapshot.length !== BACKUP_TABLES.length ||
@@ -184,10 +184,14 @@ export async function replaceD1Snapshot(
     );
   const db = getD1();
   const statements = [
-    guardStatement(
-      `EXISTS (SELECT 1 FROM "User" WHERE "id"=? AND "role"='ADMIN' AND "status"='APPROVED')`,
-      [adminId],
-    ),
+    "setup" in actor && actor.setup
+      ? guardStatement(
+          `EXISTS (SELECT 1 FROM "AdminSetup" WHERE "id"='initial-admin' AND "completedAt" IS NULL) AND NOT EXISTS (SELECT 1 FROM "User" WHERE "role"='ADMIN')`,
+        )
+      : guardStatement(
+          `EXISTS (SELECT 1 FROM "User" WHERE "id"=? AND "role"='ADMIN' AND "status"='APPROVED')`,
+          ["adminId" in actor ? actor.adminId : ""],
+        ),
   ];
   for (const table of [
     "Session",

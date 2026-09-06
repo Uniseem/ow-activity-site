@@ -226,7 +226,13 @@ export async function previewBackupImport(db: PrismaClient, id: string, ownerId:
   return { preview: parsed.preview, manifest: parsed.manifest };
 }
 
-export async function replaceDatabaseSnapshot(db: PrismaClient, snapshot: BackupSnapshot, adminId: string, media?: { transferId: string; manifest: BackupManifest }) {
+export async function replaceDatabaseSnapshot(
+  db: PrismaClient,
+  snapshot: BackupSnapshot,
+  actorId: string,
+  media?: { transferId: string; manifest: BackupManifest },
+  options?: { setup?: boolean },
+) {
   const assetIndex = new Map(media?.manifest.files.map((file, index) => [file.path, index]));
   if (isD1()) {
     const transfer = await import("./database-transfer");
@@ -239,7 +245,10 @@ export async function replaceDatabaseSnapshot(db: PrismaClient, snapshot: Backup
         const storageKey = await transfer.writeD1RestoreAsset(bytes, String(asset.mimeType));
         keys.push(storageKey); asset.storageKey = storageKey; asset.byteSize = bytes.length;
       }
-      await transfer.replaceD1Snapshot(snapshot, { adminId });
+      await transfer.replaceD1Snapshot(
+        snapshot,
+        options?.setup ? { setup: true } : { adminId: actorId },
+      );
     } catch (error) { await transfer.deleteD1RestoreAssets(keys).catch(() => {}); throw error; }
     return;
   }
@@ -247,8 +256,15 @@ export async function replaceDatabaseSnapshot(db: PrismaClient, snapshot: Backup
     // Exclude concurrent writers while replacing every table. Any failed insert,
     // late asset checksum mismatch or constraint violation rolls back all deletes.
     await tx.$executeRawUnsafe(`LOCK TABLE ${deleteOrder.map((table) => `"${table}"`).join(", ")} IN EXCLUSIVE MODE`);
-    const admin = await tx.user.findUnique({ where: { id: adminId } });
-    if (!hasPermission(admin, "backup")) throw new BackupError("管理员登录已失效，或没有备份权限。");
+    if (options?.setup) {
+      const setup = await tx.adminSetup.findUnique({ where: { id: "initial-admin" } });
+      const existingAdmin = await tx.user.findFirst({ where: { role: "ADMIN" }, select: { id: true } });
+      if (!setup || setup.completedAt || existingAdmin)
+        throw new BackupError("管理员已创建，首次注册入口已关闭。请使用已有账号登录。");
+    } else {
+      const admin = await tx.user.findUnique({ where: { id: actorId } });
+      if (!hasPermission(admin, "backup")) throw new BackupError("管理员登录已失效，或没有备份权限。");
+    }
     for (const table of deleteOrder) await tx.$executeRawUnsafe(`DELETE FROM "${table}"`);
     for (const table of insertOrder) {
       const rows = snapshot.find((entry) => entry.table === table)!.rows;
@@ -267,10 +283,23 @@ export async function replaceDatabaseSnapshot(db: PrismaClient, snapshot: Backup
     await tx.backupTransfer.deleteMany();
   }, { timeout: 240_000, maxWait: 15_000 });
 }
-export async function restoreBackupImport(db: PrismaClient, id: string, ownerId: string, key: string | undefined, confirmation: string) {
+export async function restoreBackupImport(
+  db: PrismaClient,
+  id: string,
+  ownerId: string,
+  key: string | undefined,
+  confirmation: string,
+  options?: { setup?: boolean },
+) {
   if (confirmation !== "覆盖恢复") throw new BackupError("请输入“覆盖恢复”以确认替换当前网站数据。");
   const parsed = await loadImport(db, id, ownerId, true);
-  await replaceDatabaseSnapshot(db, restoredSnapshot(parsed.snapshot, key), ownerId, { transferId: id, manifest: parsed.manifest });
+  await replaceDatabaseSnapshot(
+    db,
+    restoredSnapshot(parsed.snapshot, key),
+    ownerId,
+    { transferId: id, manifest: parsed.manifest },
+    options,
+  );
   if (isD1()) await db.backupTransfer.deleteMany();
   return { ok: true, administrators: parsed.preview.administrators };
 }

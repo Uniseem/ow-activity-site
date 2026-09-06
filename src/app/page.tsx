@@ -57,7 +57,7 @@ export default async function Home() {
           <a href="/admin/setup" className="text-accent underline">
             注册首位管理员
           </a>
-          。
+          ，或在同一页用以前的备份 ZIP 恢复。
         </Notice>
       ) : null}
       <div className="home-content-grid">

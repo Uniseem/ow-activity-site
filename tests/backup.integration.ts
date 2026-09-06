@@ -12,6 +12,7 @@ import {
   BackupError,
   validateBackupSnapshot,
 } from "../src/lib/backup-format";
+import { SETUP_BACKUP_OWNER_ID } from "../src/lib/backup-access";
 import {
   cancelBackupTransfer,
   downloadBackupChunk,
@@ -230,6 +231,7 @@ async function importZip(
   key: string,
   zip: Uint8Array,
   confirmation: string,
+  options?: { setup?: boolean },
 ) {
   const { manifest, files } = await readBackupZip(zip);
   const started = await startBackupImport(db, ownerId, manifest);
@@ -246,7 +248,14 @@ async function importZip(
     }
   }
   const preview = await previewBackupImport(db, started.id, ownerId, key);
-  const restored = await restoreBackupImport(db, started.id, ownerId, key, confirmation);
+  const restored = await restoreBackupImport(
+    db,
+    started.id,
+    ownerId,
+    key,
+    confirmation,
+    options,
+  );
   return { preview, restored };
 }
 
@@ -371,5 +380,52 @@ test("权限、损坏分块和恢复失败都不会部分覆盖现有数据", as
     assert.equal(await db.user.count({ where: { username: "keep-admin" } }), 1);
     await cancelBackupTransfer(db, broken.id, admin.id);
     await cancelBackupTransfer(db, exported.id, admin.id);
+  });
+});
+
+test("首次管理员注册页可用 ZIP 恢复账号密码，入口关闭后不再接受 setup 恢复", async () => {
+  await withSchema("backup_src_setup", async (source) => {
+    const { admin } = await seedSource(source);
+    const { zip } = await assembleExport(source, admin.id, sourceKey);
+
+    await withSchema("backup_dst_setup", async (target) => {
+      const setup = await target.adminSetup.findUniqueOrThrow({
+        where: { id: "initial-admin" },
+      });
+      assert.equal(setup.completedAt, null);
+      assert.equal(await target.user.count(), 0);
+      const result = await importZip(
+        target,
+        SETUP_BACKUP_OWNER_ID,
+        targetKey,
+        zip,
+        "覆盖恢复",
+        { setup: true },
+      );
+      assert.deepEqual(result.restored.administrators, ["source-admin"]);
+      const restoredAdmin = await target.user.findUniqueOrThrow({
+        where: { username: "source-admin" },
+      });
+      assert.equal(await bcrypt.compare(password, restoredAdmin.passwordHash!), true);
+      const oauth = await target.oAuthAccount.findFirstOrThrow({
+        where: { providerAccountId: "12345" },
+      });
+      assert.ok(oauth.userId);
+      const closed = await target.adminSetup.findUniqueOrThrow({
+        where: { id: "initial-admin" },
+      });
+      assert.ok(closed.completedAt);
+      await assert.rejects(
+        importZip(
+          target,
+          SETUP_BACKUP_OWNER_ID,
+          targetKey,
+          zip,
+          "覆盖恢复",
+          { setup: true },
+        ),
+        /首次注册入口已关闭/,
+      );
+    });
   });
 });

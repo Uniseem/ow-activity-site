@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { hasPermission } from "@/lib/admin-permissions";
+import { canSetUpAdmin } from "@/lib/admin-setup";
 import { getCurrentUser, SESSION_COOKIE } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { oauthOrigin, flowCookieName } from "@/lib/oauth/server";
+import { canRunBackupOperation, resolveBackupAccess } from "@/lib/backup-access";
 import { BACKUP_MAX_REQUEST_BYTES, BackupError, backupRequestSchema, isTrustedBackupOrigin } from "@/lib/backup-format";
 import { cancelBackupTransfer, downloadBackupChunk, previewBackupImport, restoreBackupImport, startBackupExport, startBackupImport, uploadBackupChunk } from "@/lib/backup-service";
 
@@ -31,23 +32,35 @@ async function limitedJson(request: Request): Promise<unknown> {
 }
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) return json({ message: "请先登录管理员账号。" }, 401);
-  if (!hasPermission(user, "backup")) return json({ message: "只有获得备份权限的管理员可以备份或恢复网站。" }, 403);
+  const [user, setupOpen] = await Promise.all([
+    getCurrentUser(),
+    canSetUpAdmin(prisma),
+  ]);
+  const access = resolveBackupAccess({ user, setupOpen });
+  if (!access.ok) return json({ message: access.message }, access.status);
   try {
     if (!isTrustedBackupOrigin(request.headers.get("origin"), oauthOrigin(new URL(request.url).origin))) return json({ message: "请求来源不正确。" }, 403);
     const input = backupRequestSchema.safeParse(await limitedJson(request));
     if (!input.success) return json({ message: "备份请求参数不正确。" }, 400);
     const value = input.data, key = process.env.OAUTH_ENCRYPTION_KEY;
+    if (!canRunBackupOperation(access, value.operation))
+      return json({ message: "首次注册页只能上传备份恢复，不能下载当前站点。" }, 403);
     switch (value.operation) {
-      case "export": return json(await startBackupExport(prisma, user.id, key));
-      case "download": return json(await downloadBackupChunk(prisma, value.id, user.id, value.index));
-      case "import": return json(await startBackupImport(prisma, user.id, value.manifest));
-      case "upload": return json(await uploadBackupChunk(prisma, value.id, user.id, value.index, value.data));
-      case "preview": return json(await previewBackupImport(prisma, value.id, user.id, key));
-      case "cancel": return json(await cancelBackupTransfer(prisma, value.id, user.id));
+      case "export": return json(await startBackupExport(prisma, access.ownerId, key));
+      case "download": return json(await downloadBackupChunk(prisma, value.id, access.ownerId, value.index));
+      case "import": return json(await startBackupImport(prisma, access.ownerId, value.manifest));
+      case "upload": return json(await uploadBackupChunk(prisma, value.id, access.ownerId, value.index, value.data));
+      case "preview": return json(await previewBackupImport(prisma, value.id, access.ownerId, key));
+      case "cancel": return json(await cancelBackupTransfer(prisma, value.id, access.ownerId));
       case "restore": {
-        const result = await restoreBackupImport(prisma, value.id, user.id, key, value.confirmation);
+        const result = await restoreBackupImport(
+          prisma,
+          value.id,
+          access.ownerId,
+          key,
+          value.confirmation,
+          { setup: access.setup },
+        );
         const jar = await cookies();
         for (const name of [SESSION_COOKIE, flowCookieName("google"), flowCookieName("github")]) jar.delete(name);
         revalidatePath("/", "layout");
