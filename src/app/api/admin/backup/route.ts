@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { revalidateLayout } from "@/lib/revalidate-site";
 import { canSetUpAdmin } from "@/lib/admin-setup";
 import { getCurrentUser, SESSION_COOKIE } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         );
         const jar = await cookies();
         for (const name of [SESSION_COOKIE, flowCookieName("google"), flowCookieName("github")]) jar.delete(name);
-        revalidatePath("/", "layout");
+        revalidateLayout();
         return json(result);
       }
     }

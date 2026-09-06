@@ -9,8 +9,10 @@ import { hasEncryptionKey } from "@/lib/oauth/security";
 export const dynamic = "force-dynamic";
 
 export default async function AiSettingsPage() {
-  await requirePermission("ai");
-  const settings = aiSettingsView(await getAiSettings(prisma));
+  const [, settings] = await Promise.all([
+    requirePermission("ai"),
+    getAiSettings(prisma).then(aiSettingsView),
+  ]);
   return (
     <main className="page-shell">
       <PageHeading

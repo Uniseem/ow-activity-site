@@ -25,7 +25,7 @@ export function AdminUserForm({
         const saved = await action(formData);
         if (saved.ok) {
           if (saved.redirectTo) router.push(saved.redirectTo);
-          router.refresh();
+          else router.refresh();
         }
         return saved;
       } catch {

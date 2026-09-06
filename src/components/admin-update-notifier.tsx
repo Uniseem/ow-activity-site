@@ -61,12 +61,25 @@ export function AdminUpdateNotifier({ sessionKey }: { sessionKey: string }) {
     function visible() {
       if (Date.now() - lastChecked >= CHECK_INTERVAL_MS) void check();
     }
-    void check();
+    const startIdle =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback(() => {
+            void check();
+          }, { timeout: 3_000 })
+        : undefined;
+    const start =
+      startIdle === undefined
+        ? setTimeout(() => {
+            void check();
+          }, 3_000)
+        : undefined;
     const interval = setInterval(visible, CHECK_INTERVAL_MS);
     document.addEventListener("visibilitychange", visible);
     window.addEventListener("ow-update-settings-saved", check);
     return () => {
       active = false;
+      if (startIdle !== undefined) cancelIdleCallback(startIdle);
+      if (start !== undefined) clearTimeout(start);
       clearInterval(interval);
       clearTimeout(retry);
       document.removeEventListener("visibilitychange", visible);

@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { hasPermission } from "@/lib/admin-permissions";
+import { revalidateAdminAi } from "@/lib/revalidate-site";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { listOpenAiModels, AiClientError } from "@/lib/ai/openai-compatible";
@@ -54,7 +54,7 @@ export async function saveAiSettingsAction(
       admin.id,
       process.env.OAUTH_ENCRYPTION_KEY,
     );
-    revalidatePath("/admin/ai");
+    revalidateAdminAi();
     return {
       ...saved,
       ok: true,

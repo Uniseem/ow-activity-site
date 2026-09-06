@@ -1,5 +1,5 @@
 "use server";
-import { revalidatePath } from "next/cache";
+import { revalidateLayout } from "@/lib/revalidate-site";
 import { hasPermission } from "@/lib/admin-permissions";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -80,7 +80,7 @@ export async function saveSiteSettingsAction(
       message: "保存失败，请稍后重试。你的修改仍保留在当前页面。",
     };
   }
-  revalidatePath("/", "layout");
+  revalidateLayout();
   return {
     ok: true,
     revision: revision + 1,

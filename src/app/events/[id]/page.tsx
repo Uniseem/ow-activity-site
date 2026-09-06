@@ -34,19 +34,22 @@ export default async function EventDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { id } = await params;
-  const query = searchParams ? await searchParams : {};
-  const [event, user] = await Promise.all([
-    getPublicEvent(id),
+  const [{ id }, query, user] = await Promise.all([
+    params,
+    searchParams ??
+      Promise.resolve<Record<string, string | string[] | undefined>>({}),
     getCurrentUser(),
   ]);
-  if (!event) notFound();
-  const userRegistration =
+  const [event, userRegistration] = await Promise.all([
+    getPublicEvent(id),
     user && isDatabaseConfigured()
-      ? await prisma.eventRegistration.findUnique({
-          where: { eventId_userId: { eventId: event.id, userId: user.id } },
+      ? prisma.eventRegistration.findUnique({
+          where: { eventId_userId: { eventId: id, userId: user.id } },
+          select: { status: true },
         })
-      : null;
+      : null,
+  ]);
+  if (!event) notFound();
   const approvedCount = event.registrations?.length ?? 0;
   const full = approvedCount >= event.maxParticipants;
   const deadlinePassed = isPastDate(event.signupDeadline);

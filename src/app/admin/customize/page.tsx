@@ -5,8 +5,10 @@ import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 export default async function CustomizePage() {
-  await requirePermission("customize");
-  const settings = await getSiteSettings();
+  const [, settings] = await Promise.all([
+    requirePermission("customize"),
+    getSiteSettings(),
+  ]);
   return (
     <main className="page-shell">
       <PageHeading

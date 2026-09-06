@@ -31,23 +31,28 @@ export default async function MePage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const user = await requireUser();
-  const query = searchParams ? await searchParams : {};
-  const profile = user.profile;
-  const registrations = await prisma.eventRegistration.findMany({
-    where: {
-      userId: user.id,
-      status: { not: "CANCELLED" },
-      event: { status: { not: "DRAFT" } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 6,
-    select: {
-      id: true,
-      status: true,
-      event: { select: { id: true, title: true, startTime: true } },
-    },
-  });
+  const [user, query] = await Promise.all([
+    requireUser(),
+    searchParams ??
+      Promise.resolve<Record<string, string | string[] | undefined>>({}),
+  ]);
+  const [profile, registrations] = await Promise.all([
+    prisma.profile.findUnique({ where: { userId: user.id } }),
+    prisma.eventRegistration.findMany({
+      where: {
+        userId: user.id,
+        status: { not: "CANCELLED" },
+        event: { status: { not: "DRAFT" } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: {
+        id: true,
+        status: true,
+        event: { select: { id: true, title: true, startTime: true } },
+      },
+    }),
+  ]);
   const errors: Record<string, string> = {
     "avatar-size": "头像不能超过 512 KB。",
     "avatar-type": "头像只支持 PNG、JPEG、WebP 或 GIF。",

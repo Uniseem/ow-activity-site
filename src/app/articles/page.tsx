@@ -27,23 +27,21 @@ export default async function ArticlesPage({
         }
       : {}),
   };
-  const count = isDatabaseConfigured()
-    ? await prisma.article.count({ where })
-    : 0;
+  const requestedPage = Math.max(1, Math.trunc(Number(query.page) || 1));
+  const [count, articles] = isDatabaseConfigured()
+    ? await Promise.all([
+        prisma.article.count({ where }),
+        prisma.article.findMany({
+          where,
+          orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+          skip: (requestedPage - 1) * 12,
+          take: 12,
+          select: articleCardSelect,
+        }),
+      ])
+    : [0, []];
   const pages = Math.max(1, Math.ceil(count / 12));
-  const page = Math.min(
-    pages,
-    Math.max(1, Math.trunc(Number(query.page) || 1)),
-  );
-  const articles = isDatabaseConfigured()
-    ? await prisma.article.findMany({
-        where,
-        orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
-        skip: (page - 1) * 12,
-        take: 12,
-        select: articleCardSelect,
-      })
-    : [];
+  const page = Math.min(pages, requestedPage);
   return (
     <main className="page-shell">
       <PageHeading title="文章" />

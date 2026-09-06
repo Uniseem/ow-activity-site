@@ -30,8 +30,11 @@ export default async function AdminUsersPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const viewer = await requirePermission("users");
-  const query = searchParams ? await searchParams : {};
+  const [viewer, query] = await Promise.all([
+    requirePermission("users"),
+    searchParams ??
+      Promise.resolve<Record<string, string | string[] | undefined>>({}),
+  ]);
   const status =
     typeof query.status === "string" &&
     ["PENDING", "APPROVED", "REJECTED", "BANNED"].includes(query.status)
@@ -57,18 +60,42 @@ export default async function AdminUsersPage({
         }
       : {}),
   };
-  const total = await prisma.user.count({ where });
-  const page = Math.min(
-    Math.max(1, Math.floor(Number(query.page) || 1)),
-    Math.max(1, Math.ceil(total / 20)),
-  );
-  const users = await prisma.user.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    skip: (page - 1) * 20,
-    take: 20,
-    include: { profile: true },
-  });
+  const requestedPage = Math.max(1, Math.floor(Number(query.page) || 1));
+  const [total, users] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (requestedPage - 1) * 20,
+      take: 20,
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        status: true,
+        primaryAdmin: true,
+        adminPermissions: true,
+        profile: {
+          select: {
+            id: true,
+            avatarUrl: true,
+            displayName: true,
+            slogan: true,
+            battleTag: true,
+            mainRole: true,
+            mainHeroes: true,
+            rank: true,
+            onlineTime: true,
+            contact: true,
+            extraNote: true,
+            reviewStatus: true,
+            reviewNote: true,
+          },
+        },
+      },
+    }),
+  ]);
+  const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / 20)));
   function href(nextStatus: string, nextPage = 1) {
     return (
       "/admin/users?" +

@@ -1,10 +1,12 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { demoEvents, demoProfiles } from "@/lib/demo-data";
 import { isDatabaseConfigured, prisma } from "@/lib/prisma";
 import { syncEventStatuses } from "@/lib/event-schedule";
 
-export async function getHomeData() {
+export const getHomeData = cache(async () => {
   if (!isDatabaseConfigured()) {
     return {
       events: demoEvents,
@@ -47,9 +49,9 @@ export async function getHomeData() {
   ]);
 
   return { events, profiles, isDemo: false };
-}
+});
 
-export async function getPublicProfiles() {
+export const getPublicProfiles = cache(async () => {
   if (!isDatabaseConfigured()) {
     return demoProfiles;
   }
@@ -69,9 +71,9 @@ export async function getPublicProfiles() {
       mainHeroes: true,
     },
   });
-}
+});
 
-export async function getPublicEvents() {
+export const getPublicEvents = cache(async () => {
   if (!isDatabaseConfigured()) {
     return demoEvents;
   }
@@ -89,9 +91,9 @@ export async function getPublicEvents() {
       },
     },
   });
-}
+});
 
-export async function getPublicEvent(id: string) {
+export const getPublicEvent = cache(async (id: string) => {
   if (!isDatabaseConfigured()) {
     return demoEvents.find((event) => event.id === id) ?? null;
   }
@@ -122,4 +124,4 @@ export async function getPublicEvent(id: string) {
       },
     },
   });
-}
+});

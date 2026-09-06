@@ -2,6 +2,7 @@ import { Check, Mic, UserRound, X } from "lucide-react";
 import { notFound } from "next/navigation";
 import { reviewRegistrationAction, updateEventAction } from "@/app/actions";
 import { ActionButton } from "@/components/action-button";
+import { AdminUserForm } from "@/components/admin-user-form";
 import { Avatar } from "@/components/avatar";
 import { EventForm } from "@/components/event-form";
 import { RegistrationReviewTabs } from "@/components/registration-review-tabs";
@@ -26,16 +27,34 @@ export default async function AdminEventPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePermission("events");
-  const { id } = await params;
-  const query = searchParams ? await searchParams : {};
-  await syncEventStatuses();
+  const [{ id }, query] = await Promise.all([
+    params,
+    searchParams ??
+      Promise.resolve<Record<string, string | string[] | undefined>>({}),
+    requirePermission("events"),
+    syncEventStatuses(),
+  ]);
   const event = await prisma.event.findUnique({
     where: { id },
     include: {
       registrations: {
         orderBy: { createdAt: "asc" },
-        include: { user: { include: { profile: true } } },
+        select: {
+          id: true,
+          status: true,
+          preferredRole: true,
+          heroes: true,
+          voiceAvailable: true,
+          note: true,
+          user: {
+            select: {
+              username: true,
+              profile: {
+                select: { displayName: true, avatarUrl: true },
+              },
+            },
+          },
+        },
       },
     },
   });
@@ -231,7 +250,7 @@ export default async function AdminEventPage({
                                 </div>
                               </div>
                             </div>
-                            <form
+                            <AdminUserForm
                               action={reviewRegistrationAction}
                               className="grid content-start gap-2"
                             >
@@ -271,7 +290,7 @@ export default async function AdminEventPage({
                                   拒绝报名
                                 </ActionButton>
                               ) : null}
-                            </form>
+                            </AdminUserForm>
                           </Card>
                         );
                       })

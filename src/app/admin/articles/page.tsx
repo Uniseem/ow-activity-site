@@ -27,8 +27,10 @@ export default async function AdminArticlesPage({
     deleted?: string;
   }>;
 }) {
-  await requirePermission("articles");
-  const query = await searchParams;
+  const [, query] = await Promise.all([
+    requirePermission("articles"),
+    searchParams,
+  ]);
   const status: "all" | "DRAFT" | "PUBLISHED" =
     query.status === "DRAFT" || query.status === "PUBLISHED"
       ? query.status
@@ -38,9 +40,23 @@ export default async function AdminArticlesPage({
     ...(status !== "all" ? { status } : {}),
     ...(q ? { title: { contains: q, mode: "insensitive" as const } } : {}),
   };
-  const [count, statuses] = await Promise.all([
+  const requestedPage = Math.max(1, Math.trunc(Number(query.page) || 1));
+  const [count, statuses, articles] = await Promise.all([
     prisma.article.count({ where }),
     prisma.article.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.article.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: 20,
+      skip: (requestedPage - 1) * 20,
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        updatedAt: true,
+        publishedAt: true,
+      },
+    }),
   ]);
   const statusCount = (filter: string) =>
     statuses.reduce(
@@ -50,23 +66,7 @@ export default async function AdminArticlesPage({
       0,
     );
   const pages = Math.max(1, Math.ceil(count / 20));
-  const page = Math.min(
-    pages,
-    Math.max(1, Math.trunc(Number(query.page) || 1)),
-  );
-  const articles = await prisma.article.findMany({
-    where,
-    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-    take: 20,
-    skip: (page - 1) * 20,
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      updatedAt: true,
-      publishedAt: true,
-    },
-  });
+  const page = Math.min(pages, requestedPage);
   return (
     <main className="page-shell">
       <PageHeading

@@ -21,9 +21,12 @@ export default async function AdminEventsPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requirePermission("events");
-  await syncEventStatuses();
-  const query = searchParams ? await searchParams : {};
+  const [, query] = await Promise.all([
+    requirePermission("events"),
+    searchParams ??
+      Promise.resolve<Record<string, string | string[] | undefined>>({}),
+    syncEventStatuses(),
+  ]);
   const filter =
     typeof query.filter === "string" &&
     ["review", "active", "draft", "finished"].includes(query.filter)
@@ -42,18 +45,23 @@ export default async function AdminEventsPage({
             ? { status: { in: ["FINISHED", "CANCELLED"] } }
             : {}),
   };
-  const total = await prisma.event.count({ where });
-  const page = Math.min(
-    Math.max(1, Math.floor(Number(query.page) || 1)),
-    Math.max(1, Math.ceil(total / 20)),
-  );
-  const events = await prisma.event.findMany({
-    where,
-    orderBy: { startTime: "desc" },
-    skip: (page - 1) * 20,
-    take: 20,
-    include: { registrations: { select: { status: true } } },
-  });
+  const requestedPage = Math.max(1, Math.floor(Number(query.page) || 1));
+  const [total, events] = await Promise.all([
+    prisma.event.count({ where }),
+    prisma.event.findMany({
+      where,
+      orderBy: { startTime: "desc" },
+      skip: (requestedPage - 1) * 20,
+      take: 20,
+      include: {
+        registrations: {
+          where: { status: { in: ["PENDING", "APPROVED"] } },
+          select: { status: true },
+        },
+      },
+    }),
+  ]);
+  const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / 20)));
   function href(nextFilter: string, nextPage = 1) {
     return (
       "/admin/events?" +

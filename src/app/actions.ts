@@ -1,7 +1,13 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { revalidatePath } from "next/cache";
+import {
+  revalidateAccount,
+  revalidateAdminUsers,
+  revalidateEvents,
+  revalidateHome,
+  revalidatePlayers,
+} from "@/lib/revalidate-site";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -11,7 +17,6 @@ import {
   destroySession,
   getCurrentUser,
   redirectIfAdminSetupOpen,
-  requireAdmin,
   requireUser,
 } from "@/lib/auth";
 import {
@@ -295,9 +300,9 @@ export async function updateProfileAction(formData: FormData) {
     await maybeAutoReviewProfile(profile.id);
   }
 
-  revalidatePath("/");
-  revalidatePath("/players");
-  revalidatePath("/me");
+  revalidateAccount();
+  revalidatePlayers();
+  revalidateHome();
   redirect("/me?saved=profile");
 }
 
@@ -366,10 +371,9 @@ export async function reviewProfileAction(
     };
   }
 
-  revalidatePath("/");
-  revalidatePath("/players");
-  revalidatePath("/admin/users");
-  revalidatePath("/admin");
+  revalidateAdminUsers();
+  revalidatePlayers();
+  revalidateHome();
   return {
     ok: true,
     message: approved ? "资料已通过审核。" : "资料已拒绝。",
@@ -432,8 +436,8 @@ export async function updateUserStatusAction(
     };
   }
 
-  revalidatePath("/admin/users");
-  revalidatePath("/admin");
+  revalidateAdminUsers();
+  revalidatePlayers();
   return {
     ok: true,
     message: "账号状态已更新。",
@@ -480,9 +484,7 @@ export async function assignStaffAction(
   } catch {
     return { ok: false, message: "权限更新失败，请稍后重试。" };
   }
-  revalidatePath("/admin/users");
-  revalidatePath("/admin");
-  revalidatePath("/", "layout");
+  revalidateAdminUsers();
   return {
     ok: true,
     message: action === "revoke" ? "已撤销次级管理员。" : "已保存次级管理员权限。",
@@ -541,10 +543,8 @@ export async function createEventAction(
   const event = await prisma.event.create({
     data: { ...parsed.data, createdById: admin.id },
   });
-  revalidatePath("/");
-  revalidatePath("/events");
-  revalidatePath("/admin/events");
-  revalidatePath("/admin");
+  revalidateEvents(event.id);
+  if (event.status !== "DRAFT") revalidateHome();
   return {
     ok: true,
     message:
@@ -581,12 +581,8 @@ export async function updateEventAction(
             : "活动信息格式有误，请检查必填内容与字数限制。",
     };
   await prisma.event.update({ where: { id: eventId }, data: parsed.data });
-  revalidatePath("/");
-  revalidatePath("/events");
-  revalidatePath("/admin/events");
-  revalidatePath(`/events/${eventId}`);
-  revalidatePath(`/admin/events/${eventId}`);
-  revalidatePath("/admin");
+  revalidateEvents(eventId);
+  revalidateHome();
   return {
     ok: true,
     message: `活动已保存 · ${eventStatusLabels[parsed.data.status]}${parsed.data.status === "DRAFT" ? "，仅管理员可见。" : "，前台已同步更新。"}`,
@@ -606,15 +602,24 @@ export async function registerEventAction(formData: FormData) {
   }
 
   await syncEventStatuses();
-  const event = await prisma.event.findUnique({
-    where: { id: eventId },
-    include: {
-      registrations: {
-        where: { status: "APPROVED" },
-        select: { id: true },
+  const [event, approvedCount, existing] = await Promise.all([
+    prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        status: true,
+        signupClosed: true,
+        signupDeadline: true,
+        maxParticipants: true,
       },
-    },
-  });
+    }),
+    prisma.eventRegistration.count({
+      where: { eventId, status: "APPROVED" },
+    }),
+    prisma.eventRegistration.findUnique({
+      where: { eventId_userId: { eventId, userId: user.id } },
+      select: { id: true, status: true },
+    }),
+  ]);
 
   if (
     !event ||
@@ -628,18 +633,9 @@ export async function registerEventAction(formData: FormData) {
     redirect(`/events/${eventId}?error=deadline`);
   }
 
-  if (event.registrations.length >= event.maxParticipants) {
+  if (approvedCount >= event.maxParticipants) {
     redirect(`/events/${eventId}?error=full`);
   }
-
-  const existing = await prisma.eventRegistration.findUnique({
-    where: {
-      eventId_userId: {
-        eventId,
-        userId: user.id,
-      },
-    },
-  });
 
   if (existing && existing.status !== "CANCELLED") {
     redirect(`/events/${eventId}?error=registered`);
@@ -668,7 +664,7 @@ export async function registerEventAction(formData: FormData) {
     });
   }
 
-  revalidatePath(`/events/${eventId}`);
+  revalidateEvents(eventId);
   redirect(`/events/${eventId}?registered=1`);
 }
 
@@ -685,13 +681,23 @@ export async function cancelRegistrationAction(formData: FormData) {
     data: { status: "CANCELLED" },
   });
 
-  revalidatePath(`/events/${eventId}`);
+  revalidateEvents(eventId);
+  revalidateHome();
   redirect(`/events/${eventId}?cancelled=1`);
 }
 
-export async function reviewRegistrationAction(formData: FormData) {
-  const admin = await requireAdmin();
-  if (!hasPermission(admin, "events")) redirect("/admin");
+export async function reviewRegistrationAction(
+  formData: FormData,
+): Promise<AdminUserFormResult> {
+  const admin = await getCurrentUser();
+  if (!hasPermission(admin, "events")) {
+    return {
+      ok: false,
+      authRequired: true,
+      message:
+        "登录已失效或当前账号没有活动管理权限。请重新登录后再审核。",
+    };
+  }
   const registrationId = text(formData, "registrationId");
   const eventId = text(formData, "eventId");
   const decision = text(formData, "decision");
@@ -703,8 +709,9 @@ export async function reviewRegistrationAction(formData: FormData) {
     !registrationId ||
     !eventId ||
     !["APPROVED", "REJECTED"].includes(decision)
-  )
-    redirect("/admin/events");
+  ) {
+    return { ok: false, message: "报名信息无效，请刷新后重试。" };
+  }
 
   const result = isD1Database()
     ? await reviewD1Registration(
@@ -741,15 +748,21 @@ export async function reviewRegistrationAction(formData: FormData) {
         return saved.count ? "saved" : "registration";
       });
 
-  revalidatePath("/");
-  revalidatePath("/events");
-  revalidatePath(`/events/${eventId}`);
-  revalidatePath(`/admin/events/${eventId}`);
-  const feedback =
-    result === "saved" ? "&reviewed=" + decision : "&error=" + result;
-  revalidatePath("/admin");
-  revalidatePath("/admin/events");
-  redirect(
-    `/admin/events/${eventId}?review=${reviewTab}${feedback}#registration-review`,
-  );
+  revalidateEvents(eventId);
+  revalidateHome();
+  const path = `/admin/events/${eventId}?review=${reviewTab}#registration-review`;
+  if (result !== "saved") {
+    return {
+      ok: false,
+      message:
+        result === "full"
+          ? "通过人数已满，无法再通过这份报名。"
+          : "报名可能已变化，请刷新后重试。",
+    };
+  }
+  return {
+    ok: true,
+    message: decision === "APPROVED" ? "报名已通过。" : "报名已拒绝。",
+    redirectTo: `${path}&reviewed=${decision}`,
+  };
 }

@@ -1,5 +1,5 @@
 "use server";
-import { revalidatePath } from "next/cache";
+import { revalidateArticles, revalidateHome } from "@/lib/revalidate-site";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/admin-permissions";
 import { getCurrentUser } from "@/lib/auth";
@@ -55,12 +55,8 @@ export async function inspectArticleRecoveryAction(
 }
 
 function refreshArticles(id: string) {
-  revalidatePath("/");
-  revalidatePath("/articles");
-  revalidatePath(`/articles/${id}`);
-  revalidatePath("/admin/articles");
-  revalidatePath("/admin");
-  revalidatePath(`/admin/articles/${id}`);
+  revalidateArticles(id);
+  revalidateHome();
 }
 export async function saveArticleAction(
   formData: FormData,

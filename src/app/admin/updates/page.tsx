@@ -5,8 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { getUpdateSettings, settingsView } from "@/lib/updates/service";
 export const dynamic = "force-dynamic";
 export default async function UpdatesPage() {
-  await requirePermission("updates");
-  const settings = settingsView(await getUpdateSettings(prisma));
+  const [, settings] = await Promise.all([
+    requirePermission("updates"),
+    getUpdateSettings(prisma).then(settingsView),
+  ]);
   return (
     <main className="page-shell">
       <PageHeading

@@ -13,9 +13,12 @@ export default async function EditArticlePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await requirePermission("articles");
+  const [admin, { id }] = await Promise.all([
+    requirePermission("articles"),
+    params,
+  ]);
   const article = await prisma.article.findUnique({
-    where: { id: (await params).id },
+    where: { id },
   });
   if (!article) notFound();
   return (
