@@ -7,9 +7,11 @@ import { oauthMessages } from "@/lib/oauth/shared";
 export async function AuthPage({
   mode,
   oauthCode,
+  restored,
 }: {
   mode: "login" | "register";
   oauthCode?: string;
+  restored?: boolean;
 }) {
   const providers = await getOAuthAvailability();
   const isLogin = mode === "login";
@@ -20,6 +22,11 @@ export async function AuthPage({
         {!isLogin ? <p>账号与资料通过审核后即可报名活动。</p> : null}
       </div>
       <Card className="auth-form-card">
+        {restored ? (
+          <Notice tone="success">
+            网站已从备份恢复。请使用备份中的管理员账号和原密码登录。
+          </Notice>
+        ) : null}
         {oauthCode && oauthMessages[oauthCode] ? (
           <Notice tone="warning">{oauthMessages[oauthCode]}</Notice>
         ) : null}

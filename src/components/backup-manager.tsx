@@ -13,7 +13,16 @@ async function request<T>(input: Record<string, unknown>): Promise<T> {
   return value as T;
 }
 
-export function BackupManager() {
+export function BackupManager({
+  mode = "admin",
+  encryptionReady = true,
+  onRestored,
+}: {
+  mode?: "admin" | "setup";
+  encryptionReady?: boolean;
+  onRestored?: (administrators: string[]) => void;
+}) {
+  const setup = mode === "setup";
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
@@ -24,7 +33,7 @@ export function BackupManager() {
   const [restored, setRestored] = useState<string[] | null>(null);
   const clearMessage = () => { setError(""); setMessage(""); };
   async function download() {
-    if (busy) return;
+    if (busy || setup) return;
     setBusy(true); clearMessage(); setProgress("正在冻结网站数据快照…");
     let id: string | undefined;
     try {
@@ -80,20 +89,39 @@ export function BackupManager() {
     setBusy(true); clearMessage(); setProgress("正在恢复，请勿关闭页面…");
     try {
       const result = await request<{ administrators: string[] }>({ operation: "restore", id: ready.id, confirmation });
-      setRestored(result.administrators); setReady(null);
+      setReady(null);
+      if (onRestored) onRestored(result.administrators);
+      else setRestored(result.administrators);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "恢复失败。"); }
     finally { setBusy(false); setProgress(""); }
   }
-  if (restored) return <Card className="gap-5 p-6"><Notice tone="success">恢复完成。所有账号、密码、内容和设置已替换为备份中的数据，原登录已退出。</Notice><p className="text-sm">请使用备份中的管理员账号登录：{restored.join("、")}。</p><ButtonLink href="/login">重新登录</ButtonLink></Card>;
+  if (restored) return <Card className="gap-5 p-6"><Notice tone="success">恢复完成。所有账号、密码、内容和设置已替换为备份中的数据，原登录已退出。</Notice><p className="text-sm">请使用备份中的管理员账号登录：{restored.join("、")}。</p><ButtonLink href="/login?restored=1">重新登录</ButtonLink></Card>;
+  const restoreCard = (
+    <Card className="gap-5 p-6">
+      <h2 className="section-title">{setup ? "用备份恢复" : "从 ZIP 恢复"}</h2>
+      <p className="text-sm leading-7 text-muted">
+        {setup
+          ? "有以前导出的 ZIP 时，直接在这里恢复。管理员账号、密码和第三方登录都会按备份写入，不必再注册。"
+          : "先选择备份查看内容。确认后，当前站点的数据和全部账号将被覆盖，并退出所有登录。"}
+      </p>
+      {!encryptionReady ? (
+        <Notice tone="warning">服务器尚未设置 OAUTH_ENCRYPTION_KEY。备份里若含第三方登录或模型密钥，需要先配好再恢复。</Notice>
+      ) : null}
+      <input ref={input} type="file" accept=".zip,application/zip" aria-label="选择网站备份 ZIP" className="sr-only" disabled={busy} onChange={(event) => void selectFile(event.target.files?.[0])} />
+      <Button variant="secondary" onPress={() => input.current?.click()} isDisabled={busy}><Upload size={18} />选择备份 ZIP</Button>
+    </Card>
+  );
   return <div className="grid gap-6">
     {error ? <Notice tone="danger">{error}</Notice> : null}
     {message ? <Notice tone="success">{message}</Notice> : null}
     {busy ? <p role="status" aria-live="polite" className="text-sm text-muted">{progress}</p> : null}
-    <div className="grid items-start gap-6 lg:grid-cols-2">
-      <Card className="gap-5 p-6"><h2 className="section-title">下载网站备份</h2><p className="text-sm leading-7 text-muted">包含账号与密码、第三方账号绑定、玩家资料、活动报名、文章、站点设置和已上传图片。</p><Notice tone="warning">ZIP 含密码哈希和第三方登录密钥，请保存在安全位置，不要公开分享。</Notice><Button onPress={download} isDisabled={busy}><Download size={18} />下载完整 ZIP</Button></Card>
-      <Card className="gap-5 p-6"><h2 className="section-title">从 ZIP 恢复</h2><p className="text-sm leading-7 text-muted">先选择备份查看内容。确认后，当前站点的数据和全部账号将被覆盖，并退出所有登录。</p><input ref={input} type="file" accept=".zip,application/zip" aria-label="选择网站备份 ZIP" className="sr-only" disabled={busy} onChange={(event) => void selectFile(event.target.files?.[0])} /><Button variant="secondary" onPress={() => input.current?.click()} isDisabled={busy}><Upload size={18} />选择备份 ZIP</Button></Card>
-    </div>
-    {ready ? <Card className="gap-5 p-6"><div><h2 className="section-title">确认恢复</h2><p className="mt-2 break-all text-sm text-muted">{ready.fileName} · {new Date(ready.manifest.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</p></div><dl className="grid grid-cols-2 gap-4 sm:grid-cols-5">{[["账号", ready.preview.users], ["文章", ready.preview.articles], ["活动", ready.preview.events], ["报名", ready.preview.registrations], ["上传图片", ready.preview.assets]].map(([label, count]) => <div key={label}><dt className="text-sm text-muted">{label}</dt><dd className="mt-1 text-xl font-semibold">{count}</dd></div>)}</dl><Notice tone="warning">此操作会完全替换当前数据。恢复后使用原备份的管理员账号及原密码登录：{ready.preview.administrators.join("、")}。请先下载当前网站的备份。</Notice><InputField label="输入“覆盖恢复”确认" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" disabled={busy} /><div className="flex flex-wrap gap-3"><Button variant="danger" isDisabled={busy || confirmation !== "覆盖恢复"} onPress={restore}><ArchiveRestore size={18} />覆盖恢复网站</Button><Button variant="secondary" isDisabled={busy} onPress={() => { void request({ operation: "cancel", id: ready.id }).catch(() => {}); setReady(null); setConfirmation(""); }}>取消</Button></div></Card> : null}
-    <p className="text-sm leading-7 text-muted">支持 Vercel、Cloudflare 和 VPS 之间迁移。元数据上限 8 MB、50,000 条记录，图片总量上限 128 MB、单张 2 MB、最多 5,000 张；超过会停止并提示，不会省略内容。旧式内嵌头像在导出时转为独立图片，导出前仍计入元数据预估。外链图片保留原地址；代码、环境变量和域名不在 ZIP 内。临时传输 30 分钟后过期。更换域名需更新 Google / GitHub 回调地址，Deploy Hook 只适用于 Vercel。</p>
+    {setup ? restoreCard : (
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <Card className="gap-5 p-6"><h2 className="section-title">下载网站备份</h2><p className="text-sm leading-7 text-muted">包含账号与密码、第三方账号绑定、玩家资料、活动报名、文章、站点设置和已上传图片。</p><Notice tone="warning">ZIP 含密码哈希和第三方登录密钥，请保存在安全位置，不要公开分享。</Notice><Button onPress={download} isDisabled={busy}><Download size={18} />下载完整 ZIP</Button></Card>
+        {restoreCard}
+      </div>
+    )}
+    {ready ? <Card className="gap-5 p-6"><div><h2 className="section-title">确认恢复</h2><p className="mt-2 break-all text-sm text-muted">{ready.fileName} · {new Date(ready.manifest.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</p></div><dl className="grid grid-cols-2 gap-4 sm:grid-cols-5">{[["账号", ready.preview.users], ["文章", ready.preview.articles], ["活动", ready.preview.events], ["报名", ready.preview.registrations], ["上传图片", ready.preview.assets]].map(([label, count]) => <div key={label}><dt className="text-sm text-muted">{label}</dt><dd className="mt-1 text-xl font-semibold">{count}</dd></div>)}</dl><Notice tone="warning">{setup ? `确认后写入备份数据。之后用这些管理员账号和原密码登录：${ready.preview.administrators.join("、")}。` : `此操作会完全替换当前数据。恢复后使用原备份的管理员账号及原密码登录：${ready.preview.administrators.join("、")}。请先下载当前网站的备份。`}</Notice><InputField label="输入“覆盖恢复”确认" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" disabled={busy} /><div className="flex flex-wrap gap-3"><Button variant="danger" isDisabled={busy || confirmation !== "覆盖恢复"} onPress={restore}><ArchiveRestore size={18} />覆盖恢复网站</Button><Button variant="secondary" isDisabled={busy} onPress={() => { void request({ operation: "cancel", id: ready.id }).catch(() => {}); setReady(null); setConfirmation(""); }}>取消</Button></div></Card> : null}
+    {setup ? null : <p className="text-sm leading-7 text-muted">支持 Vercel、Cloudflare 和 VPS 之间迁移。元数据上限 8 MB、50,000 条记录，图片总量上限 128 MB、单张 2 MB、最多 5,000 张；超过会停止并提示，不会省略内容。旧式内嵌头像在导出时转为独立图片，导出前仍计入元数据预估。外链图片保留原地址；代码、环境变量和域名不在 ZIP 内。临时传输 30 分钟后过期。更换域名需更新 Google / GitHub 回调地址，Deploy Hook 只适用于 Vercel。</p>}
   </div>;
 }

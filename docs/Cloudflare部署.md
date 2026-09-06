@@ -60,7 +60,7 @@ npm run cf:deploy
 
 构建命令用 `npm run cf:build`，部署命令用 `npm run cf:db:deploy && npx opennextjs-cloudflare deploy`。构建账号需要对应的 D1 迁移权限。
 
-打开 `/admin`，没有管理员时会转到 `/admin/setup`。数据库保证并发注册只能成功一位。入口关闭后用已有账号登录。
+打开 `/admin`，没有管理员时会转到 `/admin/setup`。可以注册首位管理员，也可以上传以前的备份 ZIP 恢复。数据库保证并发注册只能成功一位。入口关闭后用已有账号登录。
 
 自定义域名在 Workers「设置 → 域和路由」里添加。改域名后同步 `SITE_URL`，重新部署，并改 Google / GitHub 的回调地址。
 

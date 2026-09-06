@@ -11,6 +11,7 @@ export default async function LoginPage({
     <AuthPage
       mode="login"
       oauthCode={typeof query.oauth === "string" ? query.oauth : undefined}
+      restored={query.restored === "1"}
     />
   );
 }
