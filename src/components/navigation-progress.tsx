@@ -7,6 +7,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -52,7 +53,11 @@ export function NavigationProgressProvider({
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [swapPage, setSwapPage] = useState(false);
   const [bar, setBar] = useState<BarState>("idle");
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const pendingRef = useRef<string | null>(null);
   const committedPath = useRef(pathname);
   const committedSearch = useRef("");
@@ -60,10 +65,6 @@ export function NavigationProgressProvider({
   const resetTimer = useRef<number>(undefined);
   const safetyTimer = useRef<number>(undefined);
   const startedAt = useRef(0);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -147,7 +148,7 @@ export function NavigationProgressProvider({
       window.clearTimeout(resetTimer.current);
       window.clearTimeout(safetyTimer.current);
     };
-  }, [start]);
+  }, [begin, start]);
 
   return (
     <NavigationProgressContext.Provider
