@@ -1,0 +1,77 @@
+@layer components {
+  .community-nav.community-nav--animated {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .community-nav--animated > .community-nav-indicator {
+    position: absolute;
+    inset: 0 auto auto 0;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 9999px;
+    background: var(--default);
+    opacity: 0;
+  }
+
+  .community-nav--animated > .community-nav-indicator[data-visible="true"] {
+    opacity: 1;
+  }
+
+  .community-nav--animated[data-indicator-animated="true"]
+    > .community-nav-indicator {
+    transition:
+      transform var(--motion-slow, 420ms)
+        var(--motion-enter, cubic-bezier(0.16, 1, 0.3, 1)),
+      width var(--motion-slow, 420ms)
+        var(--motion-enter, cubic-bezier(0.16, 1, 0.3, 1)),
+      height var(--motion-slow, 420ms)
+        var(--motion-enter, cubic-bezier(0.16, 1, 0.3, 1)),
+      opacity var(--motion-fast, 160ms)
+        var(--motion-ease, cubic-bezier(0.22, 0.68, 0, 1));
+  }
+
+  .community-nav--animated > .community-nav-link {
+    z-index: 1;
+    border-radius: 9999px;
+  }
+
+  .community-nav--animated > .community-nav-link[data-active="true"] {
+    --button-fg: var(--accent-soft-foreground);
+    --button-bg-hover: transparent;
+    --button-bg-pressed: transparent;
+  }
+
+  .community-nav--animated:not([data-indicator-positioned="true"])
+    > .community-nav-link[aria-current="page"] {
+    background: var(--default);
+    color: var(--accent-soft-foreground);
+  }
+
+  @media (max-width: 820px) {
+    .community-nav.community-nav--animated {
+      width: 100%;
+    }
+    .community-nav--animated > .community-nav-link {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .community-nav--animated[data-indicator-animated="true"]
+      > .community-nav-indicator {
+      transition: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .community-nav--animated > .community-nav-indicator {
+      background: transparent;
+      border: 1px solid Highlight;
+    }
+    .community-nav--animated > .community-nav-link[data-active="true"] {
+      color: LinkText;
+    }
+  }
+}

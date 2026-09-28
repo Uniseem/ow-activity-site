@@ -1,0 +1,48 @@
+@layer components {
+  .player-carousel {
+    min-width: 0;
+  }
+  .player-carousel-viewport {
+    position: relative;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: calc((100% - 2rem) / 2.5);
+    gap: 1rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding: 0.5rem 0 1rem;
+  }
+  .player-carousel-viewport::-webkit-scrollbar {
+    display: none;
+  }
+  .player-carousel-viewport[data-animating="true"] {
+    scroll-snap-type: none;
+  }
+  .player-carousel-slide {
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+  .player-carousel-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  @media (max-width: 820px) {
+    .player-carousel-viewport {
+      grid-auto-columns: calc((100% - 1rem) / 1.6);
+    }
+  }
+  @media (max-width: 520px) {
+    .player-carousel-viewport {
+      grid-auto-columns: 88%;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .player-carousel-autoplay {
+      display: none;
+    }
+  }
+}
